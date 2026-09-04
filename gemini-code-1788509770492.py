@@ -14,6 +14,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS assessments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             assessment_date TEXT,
+            assessor_name TEXT,
             last_name TEXT,
             first_name TEXT,
             middle_name TEXT,
@@ -50,6 +51,12 @@ def init_db():
         )
     """
     )
+    # Ensure assessor_name column exists for legacy database files
+    c.execute("PRAGMA table_info(assessments)")
+    columns = [column[1] for column in c.fetchall()]
+    if "assessor_name" not in columns:
+        c.execute("ALTER TABLE assessments ADD COLUMN assessor_name TEXT")
+
     conn.commit()
     conn.close()
 
@@ -123,7 +130,7 @@ HYPERTENSION_MEDICATIONS = [
 ]
 
 # ---------------------------------------------------------
-# HELPER CALCULATIONS
+# HELPER CALCULATIONS & BP PARSING
 # ---------------------------------------------------------
 def calculate_age(born):
     today = datetime.date.today()
@@ -153,6 +160,29 @@ def classify_waist(sex, waist):
     elif sex == "Female":
         return "AT RISK (≥ 80 cm)" if waist >= 80 else "NOT AT RISK (< 80 cm)"
     return "N/A"
+
+
+def parse_bp(bp_str):
+    if not bp_str or "/" not in bp_str:
+        return None, None
+    try:
+        parts = bp_str.strip().split("/")
+        return int(parts[0]), int(parts[1])
+    except (ValueError, IndexError):
+        return None, None
+
+
+def calculate_average_bp(bp1, bp2, bp3):
+    readings = [parse_bp(bp1), parse_bp(bp2), parse_bp(bp3)]
+    valid_sbps = [s for s, d in readings if s is not None]
+    valid_dbps = [d for s, d in readings if d is not None]
+
+    if not valid_sbps:
+        return "N/A", 120
+
+    avg_sbp = round(sum(valid_sbps) / len(valid_sbps))
+    avg_dbp = round(sum(valid_dbps) / len(valid_dbps)) if valid_dbps else 80
+    return f"{avg_sbp}/{avg_dbp}", avg_sbp
 
 
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
@@ -540,7 +570,7 @@ if nav_program == " Executive Dashboard":
 
         st.markdown("#### **High-Risk Patients Requiring Immediate Medical Intervention**")
         high_risk_df = df[df["risk_level"] == "High"][
-            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "has_diabetes", "action_taken"]
+            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "action_taken", "assessor_name"]
         ]
         if not high_risk_df.empty:
             st.dataframe(high_risk_df, use_container_width=True)
@@ -553,10 +583,15 @@ if nav_program == " Executive Dashboard":
 elif nav_program == "PhilPEN Risk Assessment Form":
     st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
-    st.markdown("**1. General Information**")
+    st.markdown("**1. General & Assessor Information**")
+    col0_a, col0_b = st.columns(2)
+    with col0_a:
+        assessor_name = st.text_input("Pangalan ng BHW na Nag-assess (Assessor Name)*", key="p_assessor")
+    with col0_b:
+        assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
         last_name = st.text_input("Apilido (Last Name)*", key="p_lname")
     with col2:
         first_name = st.text_input("Pangalan (Given Name)*", key="p_fname")
@@ -612,7 +647,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     waist_risk = classify_waist(sex, waist) if waist > 0 else "N/A"
     st.info(f"**Waist Risk Status:** {waist_risk}")
 
-    st.markdown("**3. Medical History & Medications**")
+    st.markdown("**3. Medical History & Specific Medications**")
     col_diab, col_htn = st.columns(2)
 
     with col_diab:
@@ -620,7 +655,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
         diabetes_meds_selected = []
         if has_diabetes == "Meron":
             diabetes_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Diabetes?",
+                "Ano ang iniinom mong gamot para sa Diabetes? (Select all that apply)*",
                 options=DIABETES_MEDICATIONS,
                 default=["Metformin (500mg/850mg)"],
                 key="p_diab_meds_multi",
@@ -632,7 +667,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
         htn_meds_selected = []
         if has_htn == "Meron":
             htn_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Hypertension?",
+                "Ano ang iniinom mong gamot para sa Hypertension? (Select all that apply)*",
                 options=HYPERTENSION_MEDICATIONS,
                 default=["Amlodipine (5mg/10mg)"],
                 key="p_htn_meds_multi",
@@ -648,21 +683,18 @@ elif nav_program == "PhilPEN Risk Assessment Form":
 
     fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"], key="p_fam")
 
-    st.markdown("**4. Blood Pressure Screening**")
-    bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*", key="p_bp1")
+    st.markdown("**4. Blood Pressure Screening (Up to 3 Readings Allowed)**")
+    bp_c1, bp_c2, bp_c3 = st.columns(3)
+    with bp_c1:
+        bp1 = st.text_input("Unang Blood Pressure (BP 1)* e.g., 120/80", key="p_bp1")
+    with bp_c2:
+        bp2 = st.text_input("Pangalawang Blood Pressure (BP 2 - Optional)", key="p_bp2")
+    with bp_c3:
+        bp3 = st.text_input("Pangatlong Blood Pressure (BP 3 - Optional)", key="p_bp3")
 
-    systolic = 120
-    if bp1 and "/" in bp1:
-        try:
-            systolic = int(bp1.split("/")[0])
-        except ValueError:
-            pass
-
-    bp2, bp3, bp_avg = "", "", bp1
-    if systolic >= 140:
-        st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
-        bp2 = st.text_input("Pangalawang Blood Pressure (optional)", key="p_bp2")
-        bp3 = st.text_input("Pangatlong Blood Pressure (optional)", key="p_bp3")
+    bp_avg, sbp_for_calc = calculate_average_bp(bp1, bp2, bp3)
+    if bp1:
+        st.success(f"**Average Computed BP:** {bp_avg}")
 
     st.markdown("**5. Lifestyle & Risk Stratification**")
     smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"], key="p_smoke")
@@ -670,7 +702,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"], key="p_exer")
     healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"], key="p_diet")
 
-    risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
+    risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, sbp_for_calc, bmi, has_diabetes)
     st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
 
     action = st.selectbox(
@@ -688,6 +720,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
 
     # Calculate Sidebar Progress Tracker
     required_checks = [
+        bool(assessor_name.strip()),
         bool(last_name.strip()),
         bool(first_name.strip()),
         bool(zone.strip()),
@@ -713,23 +746,24 @@ elif nav_program == "PhilPEN Risk Assessment Form":
         if is_duplicate:
             st.error(f"⛔ CANNOT SAVE RECORD: {first_name} {last_name} has already been assessed for {assessment_year}!")
         elif completed_fields < total_required:
-            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) bago i-save!")
+            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW bago i-save!")
         else:
             conn = sqlite3.connect("philpen_palo.db")
             c = conn.cursor()
             c.execute(
                 """
                 INSERT INTO assessments (
-                    assessment_date, last_name, first_name, middle_name, zone, barangay,
+                    assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay,
                     birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
                     waist_risk, has_diabetes, diabetes_meds, has_hypertension, hypertension_meds,
                     high_cholesterol, history_cvd_stroke, history_heart_attack, history_kidney,
                     family_history, bp_1, bp_2, bp_3, bp_avg, is_smoker, is_binge_drinker,
                     is_exercising, eats_healthy, risk_level, action_taken
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
                 (
                     str(assessment_date),
+                    assessor_name,
                     last_name,
                     first_name,
                     middle_name,
@@ -776,7 +810,7 @@ elif nav_program == "Barangay Database & Analytics":
     st.subheader(f"PhilPEN Database & Statistical Reports — Barangay {st.session_state['user_brgy']}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
-        ["📋 Master Records Data Table", "📊 Visual Analytics & Charts", "✏️ Edit Resident Record (Full Data)"]
+        ["📋 Master Records Data Table", "📊 Visual Analytics & Chronic Rosters", "✏️ Edit Resident Record"]
     )
 
     with tab_view:
@@ -800,8 +834,10 @@ elif nav_program == "Barangay Database & Analytics":
             st.markdown("#### 📈 **Barangay Epidemiological Overview**")
 
             m1, m2, m3, m4, m5 = st.columns(5)
-            diab_cnt = len(df[df["has_diabetes"] == "Meron"])
-            htn_cnt = len(df[df["has_hypertension"] == "Meron"])
+            diab_df = df[df["has_diabetes"] == "Meron"]
+            htn_df = df[df["has_hypertension"] == "Meron"]
+            diab_cnt = len(diab_df)
+            htn_cnt = len(htn_df)
             high_risk_cnt = len(df[df["risk_level"] == "High"])
             smoker_cnt = len(df[df["is_smoker"] == "Oo"])
             obese_cnt = len(df[df["bmi_class"].str.contains("OBESITY", na=False)])
@@ -816,6 +852,54 @@ elif nav_program == "Barangay Database & Analytics":
                 st.metric("Hypertensive Cases", htn_cnt, delta=f"{round((htn_cnt/total_count)*100, 1)}%")
             with m5:
                 st.metric("Obesity Rate", obese_cnt, delta=f"{round((obese_cnt/total_count)*100, 1)}%")
+
+            st.markdown("---")
+
+            # ---------------------------------------------------------
+            # SPECIFIC LIST OF DIABETIC & HYPERTENSIVE PATIENTS
+            # ---------------------------------------------------------
+            st.markdown("### 🩺 **Diabetic and Hypertensive Resident Rosters**")
+            roster_col1, roster_col2 = st.columns(2)
+
+            with roster_col1:
+                st.markdown("#### 🩸 **List of Diabetic Residents**")
+                if not diab_df.empty:
+                    diab_list = diab_df[
+                        [
+                            "id",
+                            "last_name",
+                            "first_name",
+                            "age",
+                            "zone",
+                            "diabetes_meds",
+                            "bp_avg",
+                            "action_taken",
+                            "assessor_name",
+                        ]
+                    ]
+                    st.dataframe(diab_list, use_container_width=True)
+                else:
+                    st.success("No diabetic residents recorded.")
+
+            with roster_col2:
+                st.markdown("#### 🫀 **List of Hypertensive Residents**")
+                if not htn_df.empty:
+                    htn_list = htn_df[
+                        [
+                            "id",
+                            "last_name",
+                            "first_name",
+                            "age",
+                            "zone",
+                            "hypertension_meds",
+                            "bp_avg",
+                            "action_taken",
+                            "assessor_name",
+                        ]
+                    ]
+                    st.dataframe(htn_list, use_container_width=True)
+                else:
+                    st.success("No hypertensive residents recorded.")
 
             st.markdown("---")
 
@@ -854,12 +938,6 @@ elif nav_program == "Barangay Database & Analytics":
                 )
                 st.bar_chart(lifestyle_data.set_index("Risk Factor"), color="#f43f5e")
 
-            st.markdown("---")
-
-            st.markdown("##### 📋 **Age & Sex Crosstab Summary Table**")
-            age_sex_dist = pd.crosstab(df["age_group"], df["sex"], margins=True, margins_name="Total")
-            st.dataframe(age_sex_dist, use_container_width=True)
-
     with tab_edit:
         if df.empty:
             st.info("No records available to edit.")
@@ -876,7 +954,9 @@ elif nav_program == "Barangay Database & Analytics":
             st.markdown(f"#### ✏️ **Complete Record Field Edit — Resident ID #{record_id}**")
 
             with st.form("edit_full_resident_form"):
-                st.markdown("**1. General Information**")
+                st.markdown("**1. General & Assessor Information**")
+                e_assessor_name = st.text_input("Pangalan ng BHW / Assessor", value=str(rec.get("assessor_name", "")))
+
                 ec1, ec2, ec3 = st.columns(3)
 
                 try:
@@ -954,7 +1034,7 @@ elif nav_program == "Barangay Database & Analytics":
                 fam_idx = fam_options.index(rec["family_history"]) if rec["family_history"] in fam_options else 0
                 e_fam_history = st.selectbox("Family History of CVD", fam_options, index=fam_idx)
 
-                st.markdown("**4. Blood Pressure Screening**")
+                st.markdown("**4. Blood Pressure Screening (3 Readings)**")
                 ebp1_col, ebp2_col, ebp3_col = st.columns(3)
                 with ebp1_col:
                     e_bp1 = st.text_input("BP Reading 1", value=str(rec["bp_1"]))
@@ -995,12 +1075,7 @@ elif nav_program == "Barangay Database & Analytics":
                     new_bmi_cat = classify_bmi(new_bmi)
                     new_waist_risk = classify_waist(e_sex, e_waist)
 
-                    e_systolic = 120
-                    if e_bp1 and "/" in e_bp1:
-                        try:
-                            e_systolic = int(e_bp1.split("/")[0])
-                        except ValueError:
-                            pass
+                    new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
 
                     new_risk_level, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
                     e_diab_meds_str = ", ".join(e_diab_meds) if e_diab_meds else "None"
@@ -1011,7 +1086,7 @@ elif nav_program == "Barangay Database & Analytics":
                     c.execute(
                         """
                         UPDATE assessments SET
-                            assessment_date=?, last_name=?, first_name=?, middle_name=?, zone=?,
+                            assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?,
                             birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
                             waist_cm=?, waist_risk=?, has_diabetes=?, diabetes_meds=?, has_hypertension=?,
                             hypertension_meds=?, high_cholesterol=?, history_cvd_stroke=?, history_heart_attack=?,
@@ -1022,6 +1097,7 @@ elif nav_program == "Barangay Database & Analytics":
                     """,
                         (
                             str(e_assessment_date),
+                            e_assessor_name,
                             e_last_name,
                             e_first_name,
                             e_middle_name,
@@ -1047,7 +1123,7 @@ elif nav_program == "Barangay Database & Analytics":
                             e_bp1,
                             e_bp2,
                             e_bp3,
-                            e_bp1,
+                            new_bp_avg,
                             e_smoker,
                             e_drinker,
                             e_exercise,
