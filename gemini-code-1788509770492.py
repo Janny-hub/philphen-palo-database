@@ -475,7 +475,12 @@ st.sidebar.markdown(
     """
     <div class="dev-credit">
         👨‍⚕️ <strong>Lead Developer:</strong><br>
-        <span style="color: #f8fafc; font-weight: 600;">Jan Art A. Serna, RMT</span>
+        <span style="color: #f8fafc; font-weight: 600;">Jan Art A. Serna, RMT</span><br><br>
+        🎓 <strong>Capstone Project Proposed by:</strong><br>
+        <span style="color: #f8fafc; font-weight: 600;">Lesterel C. Kidit, RM</span><br>
+        <span style="color: #f8fafc; font-weight: 600;">Nova Nizza B. Dacayanan, RN</span><br>
+        <span style="color: #f8fafc; font-weight: 600;">James O. Peconcillo, MD</span><br>
+        <span style="color: #818cf8; font-size: 0.8rem;">University of the Philippines-Manila SHS Interns</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -484,14 +489,14 @@ st.sidebar.markdown(
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Navigation Menu**")
 
-# MAIN MODULE NAVIGATION WITH PHILPEN PROGRAM & NESTED SUB-MODULES
+# MAIN MODULE NAVIGATION WITH PHILPEN PROGRAM & SUB-MODULES
 main_nav = st.sidebar.radio(
     "Select Program Module:",
     [
         " Executive Dashboard",
         "PhilPEN Program",
-        "   └ 🩺 Risk Assessment Form",
-        "   └ 📊 Database & Analytics",
+        "   └ 🩺 PhilPEN Assessment Form",
+        "   └ 📊 PhilPEN Database and Analytics",
         "Nutritional Status (0-59 mos)",
         "Expanded Program on Immunization",
         "Maternal Care",
@@ -522,6 +527,9 @@ portal_location_title = "Municipality of Palo (All Barangays Overview)" if is_ad
 # ---------------------------------------------------------
 if main_nav == " Executive Dashboard":
     st.subheader(f"Executive Health Dashboard — {portal_location_title}")
+    
+    # Executive Dashboard Title Requirement
+    st.markdown("### 📋 **PhilPEN Risk Assessment Results**")
 
     if df.empty:
         st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
@@ -624,10 +632,10 @@ if main_nav == " Executive Dashboard":
             st.success("No residents currently categorized as High or Very High CVD Risk.")
 
 # ---------------------------------------------------------
-# MODULE 2: PHILPEN PROGRAM - RISK ASSESSMENT FORM
+# MODULE 2: PHILPEN PROGRAM - PHILPEN ASSESSMENT FORM
 # ---------------------------------------------------------
-elif main_nav in ["PhilPEN Program", "   └ 🩺 Risk Assessment Form"]:
-    st.subheader(f"PhilPEN Risk Assessment Form — {portal_location_title}")
+elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
+    st.subheader(f"PhilPEN Assessment Form — {portal_location_title}")
 
     st.markdown("**1. General & Assessor Information**")
     col0_a, col0_b = st.columns(2)
@@ -943,10 +951,10 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 Risk Assessment Form"]:
             st.success("Record successfully saved to the database!")
 
 # ---------------------------------------------------------
-# MODULE 3: PHILPEN PROGRAM - DATABASE & ANALYTICS
+# MODULE 3: PHILPEN PROGRAM - PHILPEN DATABASE AND ANALYTICS
 # ---------------------------------------------------------
-elif main_nav == "   └ 📊 Database & Analytics":
-    st.subheader(f"PhilPEN Database & Statistical Reports — {portal_location_title}")
+elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
+    st.subheader(f"PhilPEN Database & Analytics — {portal_location_title}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
         ["📋 Master Records Data Table", "📊 Modern Analytics & Demographics", "✏️ Edit Resident Record"]
