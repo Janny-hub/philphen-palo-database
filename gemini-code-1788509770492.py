@@ -96,13 +96,11 @@ BARANGAY_CREDENTIALS = {
 }
 
 # ---------------------------------------------------------
-# COMPUTATION HELPER FUNCTIONS
+# COMPUTATION & DUPLICATE CHECK HELPER FUNCTIONS
 # ---------------------------------------------------------
 def calculate_age(born):
     today = datetime.date.today()
-    return (
-        today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-    )
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
 def calculate_bmi(weight, height):
@@ -140,14 +138,41 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
     return "Low", "<5%", "Green"
 
 
-# ---------------------------------------------------------
-# STREAMLIT CONFIG & CUSTOM STYLING (NO DARK GRAY)
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="e-FHSIS: Palo, Leyte", layout="wide"
-)
+def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
+    """Checks if a resident has already been assessed within the specified calendar year."""
+    if not first_name.strip() or not last_name.strip():
+        return False, None
 
-# Custom Styling: Pure White Canvas, Light Green Inputs, No Dark Gray Date Pickers
+    conn = sqlite3.connect("philpen_palo.db")
+    c = conn.cursor()
+
+    query = """
+        SELECT id, assessment_date FROM assessments 
+        WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?))
+          AND LOWER(TRIM(last_name)) = LOWER(TRIM(?))
+          AND birthday = ?
+          AND strftime('%Y', assessment_date) = ?
+    """
+    params = [first_name, last_name, str(dob), str(year)]
+
+    if exclude_id:
+        query += " AND id != ?"
+        params.append(exclude_id)
+
+    c.execute(query, params)
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return True, result[1]  # Returns True and existing Assessment Date
+    return False, None
+
+
+# ---------------------------------------------------------
+# STREAMLIT CONFIG & CUSTOM STYLING
+# ---------------------------------------------------------
+st.set_page_config(page_title="e-FHSIS: Palo, Leyte", layout="wide")
+
 st.markdown(
     """
     <style>
@@ -163,31 +188,33 @@ st.markdown(
         font-weight: 600 !important;
     }
 
-    /* Entry Boxes (Text, Numbers, Selectbox, Date Inputs) */
+    /* Light Green Inputs */
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div,
     input, textarea, select {
-        background-color: #e8f5e9 !important; /* Light green */
+        background-color: #e8f5e9 !important;
         color: #000000 !important;
         border: 1px solid #81c784 !important;
         border-radius: 6px !important;
     }
 
-    /* Remove Dark Gray Calendar / Date Picker Popovers */
+    /* Date Picker Calendar Overrides */
     div[data-baseweb="popover"],
     div[data-baseweb="calendar"],
     div[data-baseweb="calendar"] *,
+    div[role="dialog"],
+    div[role="dialog"] *,
     ul[role="listbox"],
     ul[role="listbox"] * {
-        background-color: #f4fbf7 !important;
+        background-color: #e8f5e9 !important;
         color: #000000 !important;
     }
 
     div[data-baseweb="calendar"] button:hover {
-        background-color: #c8e6c9 !important;
+        background-color: #a5d6a7 !important;
     }
 
-    /* Buttons (Login, Logout, Action Buttons) */
+    /* Buttons */
     .stButton > button, button[kind="primary"], button[kind="secondary"] {
         background-color: #28a745 !important;
         color: #ffffff !important;
@@ -201,7 +228,7 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Header Banner (Light Green Manila Theme) */
+    /* Header Banner */
     .header-container {
         background-color: #d4edda;
         border: 2px solid #b1dfbb;
@@ -230,7 +257,26 @@ st.markdown(
         border-right: 1px solid #dee2e6;
     }
 
-    /* Progress Bar Styling */
+    /* Dynamic Flag Banner */
+    .flag-red-banner {
+        background-color: #f8d7da !important;
+        border: 2px solid #f5c6cb !important;
+        border-left: 8px solid #dc3545 !important;
+        padding: 15px !important;
+        border-radius: 6px !important;
+        margin-bottom: 15px !important;
+    }
+    .flag-red-banner h4 {
+        color: #721c24 !important;
+        margin: 0 0 5px 0 !important;
+        font-weight: 800 !important;
+    }
+    .flag-red-banner p {
+        color: #721c24 !important;
+        margin: 0 !important;
+        font-weight: 600 !important;
+    }
+
     .stProgress > div > div > div > div {
         background-color: #28a745 !important;
     }
@@ -306,7 +352,8 @@ nav_program = st.sidebar.radio(
 if nav_program == "PhilPEN risk assessment":
     st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
-    # Form Fields Interactive Inputs for Dynamic Progress Tracing
+    progress_container = st.container()
+
     st.markdown("**1. General Information**")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -331,6 +378,25 @@ if nav_program == "PhilPEN risk assessment":
         st.info(f"**Calculated Age:** {age} years old")
     with col_sex:
         sex = st.radio("Sex*", ["Male", "Female", "Other"], key="p_sex")
+
+    # DOUBLE ENTRY CHECK & RED FLAGGING LOGIC
+    assessment_year = assessment_date.year
+    is_duplicate, prev_date = check_annual_duplicate(first_name, last_name, dob, assessment_year)
+
+    if is_duplicate:
+        st.markdown(
+            f"""
+            <div class="flag-red-banner">
+                <h4>🔴 FLAGGED AS DOUBLE ENTRY (ANNUAL LIMIT EXCEEDED)</h4>
+                <p>
+                    <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) has already been assessed on 
+                    <strong>{prev_date}</strong> for the year <strong>{assessment_year}</strong>.<br>
+                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Risk Assessment <u>once per calendar year</u>.</em>
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("**2. Body Measurements & Auto-Calculations**")
     col_w, col_h = st.columns(2)
@@ -408,9 +474,7 @@ if nav_program == "PhilPEN risk assessment":
         key="p_action",
     )
 
-    # ---------------------------------------------------------
-    # DYNAMIC PROGRESS TRACER
-    # ---------------------------------------------------------
+    # Progress Calculation
     required_checks = [
         bool(last_name.strip()),
         bool(first_name.strip()),
@@ -424,15 +488,19 @@ if nav_program == "PhilPEN risk assessment":
 
     completed_fields = sum(required_checks)
     total_required = len(required_checks)
-    progress_percentage = int((completed_fields / total_required) * 100)
+    progress_pct = int((completed_fields / total_required) * 100)
 
-    st.markdown("---")
-    st.markdown(f"**Form Completion Progress:** `{completed_fields}/{total_required} Required Fields ({progress_percentage}%)`")
-    st.progress(progress_percentage / 100)
+    # Render Progress Bar at TOP
+    with progress_container:
+        st.markdown(f"### 📋 **Form Filling Progress:** `{completed_fields}/{total_required} Required Fields ({progress_pct}%)`")
+        st.progress(progress_pct / 100)
+        st.markdown("---")
 
     # Save Record Button
     if st.button("Save Assessment Record"):
-        if completed_fields < total_required:
+        if is_duplicate:
+            st.error(f"⛔ CANNOT SAVE RECORD: {first_name} {last_name} has already been assessed for {assessment_year}!")
+        elif completed_fields < total_required:
             st.error("Paki-kumpleto ang lahat ng mandatory fields (*) bago i-save!")
         else:
             conn = sqlite3.connect("philpen_palo.db")
@@ -492,6 +560,8 @@ if nav_program == "PhilPEN risk assessment":
 elif nav_program == "Barangay Database (PhilPEN Records)":
     st.subheader(f"PhilPEN Database — Barangay {st.session_state['user_brgy']}")
 
+    tab_view, tab_edit = st.tabs(["📋 View All Records", "✏️ Edit Resident Record"])
+
     conn = sqlite3.connect("philpen_palo.db")
     df = pd.read_sql_query(
         "SELECT * FROM assessments WHERE barangay = ?",
@@ -500,17 +570,91 @@ elif nav_program == "Barangay Database (PhilPEN Records)":
     )
     conn.close()
 
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label=f"Export CSV ({st.session_state['user_brgy']})",
-            data=csv,
-            file_name=f"PhilPEN_Records_{st.session_state['user_brgy']}.csv",
-            mime="text/csv",
-        )
-    else:
-        st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
+    with tab_view:
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label=f"Export CSV ({st.session_state['user_brgy']})",
+                data=csv,
+                file_name=f"PhilPEN_Records_{st.session_state['user_brgy']}.csv",
+                mime="text/csv",
+            )
+        else:
+            st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
+
+    with tab_edit:
+        if df.empty:
+            st.info("No resident records available to edit yet.")
+        else:
+            st.markdown("### Select Resident Record to Edit")
+            resident_options = {
+                f"ID {row['id']}: {row['last_name']}, {row['first_name']} (Assessment: {row['assessment_date']})": row["id"]
+                for _, row in df.iterrows()
+            }
+            selected_label = st.selectbox("Select Resident:", list(resident_options.keys()))
+            record_id = resident_options[selected_label]
+
+            selected_row = df[df["id"] == record_id].iloc[0]
+
+            st.markdown("---")
+            st.markdown(f"**Editing Record for: {selected_row['first_name']} {selected_row['last_name']}**")
+
+            with st.form("edit_resident_form"):
+                col_e1, col_e2, col_e3 = st.columns(3)
+                with col_e1:
+                    e_lname = st.text_input("Last Name", value=selected_row["last_name"])
+                    e_fname = st.text_input("First Name", value=selected_row["first_name"])
+                with col_e2:
+                    e_mname = st.text_input("Middle Name", value=str(selected_row["middle_name"] or ""))
+                    e_zone = st.text_input("Zone / Purok", value=selected_row["zone"])
+                with col_e3:
+                    e_weight = st.number_input("Weight (kg)", value=float(selected_row["weight_kg"]), step=0.5)
+                    e_height = st.number_input("Height (cm)", value=float(selected_row["height_cm"]), step=0.5)
+
+                e_waist = st.number_input("Waist (cm)", value=float(selected_row["waist_cm"]), step=0.5)
+                e_bp1 = st.text_input("Blood Pressure (1st reading)", value=selected_row["bp_1"])
+                e_smoker = st.radio("Smoker?", ["Hindi", "Oo"], index=0 if selected_row["is_smoker"] == "Hindi" else 1)
+                e_action = st.text_input("Action Taken", value=selected_row["action_taken"])
+
+                update_btn = st.form_submit_button("Update Resident Record")
+
+                if update_btn:
+                    new_bmi = calculate_bmi(e_weight, e_height)
+                    new_bmi_cat = classify_bmi(new_bmi)
+                    new_waist_risk = classify_waist(selected_row["sex"], e_waist)
+
+                    conn = sqlite3.connect("philpen_palo.db")
+                    c = conn.cursor()
+                    c.execute(
+                        """
+                        UPDATE assessments SET
+                            last_name = ?, first_name = ?, middle_name = ?, zone = ?,
+                            weight_kg = ?, height_cm = ?, bmi = ?, bmi_class = ?,
+                            waist_cm = ?, waist_risk = ?, bp_1 = ?, is_smoker = ?, action_taken = ?
+                        WHERE id = ?
+                    """,
+                        (
+                            e_lname,
+                            e_fname,
+                            e_mname,
+                            e_zone,
+                            e_weight,
+                            e_height,
+                            new_bmi,
+                            new_bmi_cat,
+                            e_waist,
+                            new_waist_risk,
+                            e_bp1,
+                            e_smoker,
+                            e_action,
+                            record_id,
+                        ),
+                    )
+                    conn.commit()
+                    conn.close()
+                    st.success("Resident record successfully updated!")
+                    st.rerun()
 
 else:
     st.subheader(f"{nav_program} Module")
