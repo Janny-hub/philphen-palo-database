@@ -144,49 +144,51 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 # STREAMLIT CONFIG & CUSTOM STYLING
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="PhilPEN Risk Assessment - Palo Leyte", layout="wide"
+    page_title="e-FHSIS: Palo, Leyte", layout="wide"
 )
 
-# Custom CSS for Background and Header
+# Custom CSS for Pure White Background and Yellow/Red Accent Banner
 st.markdown(
     """
     <style>
-    /* Main App Background - Light Gray */
+    /* Main App Background - Pure White */
     .stApp {
-        background-color: #f4f6f8;
+        background-color: #ffffff;
     }
     
     /* Header Container - Red & Yellow Banner */
     .header-container {
         background: linear-gradient(90deg, #d90429 0%, #ffb703 100%);
-        padding: 20px;
-        border-radius: 10px;
+        padding: 20px 25px;
+        border-radius: 8px;
         color: white;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
     }
     .header-container h1 {
         color: #ffffff !important;
         margin: 0;
         font-weight: 700;
+        font-size: 2.1rem;
     }
     .header-container p {
         color: #fff3bf;
-        margin: 5px 0 0 0;
+        margin: 6px 0 0 0;
         font-size: 1.1rem;
+        font-weight: 500;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Display Custom Red/Yellow Banner
+# System Title Banner
 st.markdown(
     """
     <div class="header-container">
-        <h1>PhilPEN Risk Assessment System</h1>
-        <p>Municipality of Palo, Leyte — Health Information Database</p>
+        <h1>e-FHSIS: Electronic Field Health Services Information System</h1>
+        <p>Palo, Leyte — Rural Health Unit Data Management Portal</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -200,11 +202,11 @@ if "authenticated" not in st.session_state:
     st.session_state["user_brgy"] = ""
 
 if not st.session_state["authenticated"]:
-    st.subheader("Barangay Portal Login")
+    st.subheader("Barangay Health Portal Login")
 
     with st.form("login_form"):
-        username = st.selectbox("Barangay Name (Username)", list(BARANGAY_CREDENTIALS.keys()))
-        password = st.text_input("Barangay Password", type="password")
+        username = st.selectbox("Select Barangay (Username)", list(BARANGAY_CREDENTIALS.keys()))
+        password = st.text_input("Barangay Access Password", type="password")
         submit = st.form_submit_button("Login")
 
         if submit:
@@ -217,21 +219,39 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------------------------------------------
-# MAIN APP INTERFACE
+# SIDEBAR NAVIGATION
 # ---------------------------------------------------------
-st.sidebar.title(f"📍 Barangay {st.session_state['user_brgy']}")
+st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
+
 if st.sidebar.button("Logout"):
     st.session_state["authenticated"] = False
     st.session_state["user_brgy"] = ""
     st.rerun()
 
-menu = st.sidebar.radio("Navigation", ["New Assessment Form", "Barangay Database"])
+st.sidebar.markdown("---")
+st.sidebar.write("**Health Programs Navigation**")
 
-if menu == "New Assessment Form":
-    st.subheader(f"New Assessment Record — {st.session_state['user_brgy']}")
+nav_program = st.sidebar.radio(
+    "Select Program Module:",
+    [
+        "PhilPEN Risk Assessment",
+        "Nutritional Status of 0-59 months old",
+        "Expanded Program on Immunization",
+        "Maternal Care",
+        "Schistosomiasis",
+        "NTP",
+        "Barangay Database (PhilPEN Records)",
+    ],
+)
+
+# ---------------------------------------------------------
+# PROGRAM MODULE ROUTING
+# ---------------------------------------------------------
+if nav_program == "PhilPEN Risk Assessment":
+    st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
     with st.form("assessment_form"):
-        st.write("**1. General Information**")
+        st.markdown("**1. General Information**")
         col1, col2, col3 = st.columns(3)
         with col1:
             assessment_date = st.date_input("Date of Assessment*", datetime.date.today())
@@ -255,7 +275,7 @@ if menu == "New Assessment Form":
         with col_sex:
             sex = st.radio("Sex*", ["Male", "Female", "Other"])
 
-        st.write("**2. Body Measurements & Auto-Calculations**")
+        st.markdown("**2. Body Measurements & Auto-Calculations**")
         col_w, col_h = st.columns(2)
         with col_w:
             weight = st.number_input("Timbang / Weight (kg)*", min_value=1.0, max_value=300.0, step=0.5)
@@ -270,7 +290,7 @@ if menu == "New Assessment Form":
         waist_risk = classify_waist(sex, waist)
         st.info(f"**Waist Risk Status:** {waist_risk}")
 
-        st.write("**3. Medical History**")
+        st.markdown("**3. Medical History**")
         has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"])
         diabetes_meds = st.text_input("Ano ang iniinom mong gamot para sa Diabetes?")
 
@@ -286,7 +306,7 @@ if menu == "New Assessment Form":
 
         fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"])
 
-        st.write("**4. Blood Pressure Screening**")
+        st.markdown("**4. Blood Pressure Screening**")
         bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*")
 
         systolic = 120
@@ -309,7 +329,7 @@ if menu == "New Assessment Form":
                 except ValueError:
                     pass
 
-        st.write("**5. Lifestyle & Risk Stratification**")
+        st.markdown("**5. Lifestyle & Risk Stratification**")
         smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"])
         drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"])
         exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"])
@@ -386,10 +406,9 @@ if menu == "New Assessment Form":
             conn.close()
             st.success("Record successfully saved to the barangay database!")
 
-elif menu == "Barangay Database":
-    st.subheader(f"Patient Database — Barangay {st.session_state['user_brgy']}")
-    
-    # ISOLATED DATABASE QUERY
+elif nav_program == "Barangay Database (PhilPEN Records)":
+    st.subheader(f"PhilPEN Database — Barangay {st.session_state['user_brgy']}")
+
     conn = sqlite3.connect("philpen_palo.db")
     df = pd.read_sql_query(
         "SELECT * FROM assessments WHERE barangay = ?",
@@ -409,3 +428,10 @@ elif menu == "Barangay Database":
         )
     else:
         st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
+
+else:
+    st.subheader(f"{nav_program} Module")
+    st.info(
+        f"The **{nav_program}** module is currently under development. "
+        "PhilPEN Risk Assessment is presently active for data collection."
+    )
