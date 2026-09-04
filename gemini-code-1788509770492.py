@@ -191,13 +191,16 @@ def calculate_average_bp(bp1, bp2, bp3):
 
 
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
-    if diabetes == "Meron" or sbp >= 160 or bmi >= 25.0:
+    # Stratification based on WHO/ISH Chart Colors
+    if (diabetes == "Meron" and sbp >= 160) or (sbp >= 180) or (diabetes == "Meron" and age >= 60 and smoker == "Oo"):
+        return "Very High", "≥30%", "#7f1d1d", "#ffffff", "Urgent referral to Physician/ Hospital"
+    elif diabetes == "Meron" or sbp >= 160 or (bmi >= 25.0 and age >= 60):
         if age >= 60 or sbp >= 160:
-            return "High", "20% to <30%", "#f43f5e"
-        return "Medium", "10% to <20%", "#fbbf24"
-    elif smoker == "Oo" or sbp >= 140:
-        return "Mild", "5% to <10%", "#38bdf8"
-    return "Low", "<5%", "#34d399"
+            return "High", "20% to <30%", "#dc2626", "#ffffff", "Urgent referral to Physician/ Hospital"
+        return "Medium", "10% to <20%", "#ea580c", "#ffffff", "Refer to RHU Physician"
+    elif smoker == "Oo" or sbp >= 140 or bmi >= 25.0:
+        return "Mild", "5% to <10%", "#eab308", "#000000", "Refer to Midwife"
+    return "Low", "<5%", "#16a34a", "#ffffff", "Counselling only"
 
 
 def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
@@ -479,7 +482,7 @@ if nav_program == " Executive Dashboard":
         st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
     else:
         total_assessed = len(df)
-        high_risk = len(df[df["risk_level"] == "High"])
+        high_risk = len(df[df["risk_level"].isin(["High", "Very High"])])
         diabetic_ct = len(df[df["has_diabetes"] == "Meron"])
         hypertensive_ct = len(df[df["has_hypertension"] == "Meron"])
         rhu_ref_ct = len(df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)])
@@ -500,7 +503,7 @@ if nav_program == " Executive Dashboard":
             st.markdown(
                 f"""
                 <div class="kpi-card">
-                    <div class="kpi-label">High CVD Risk</div>
+                    <div class="kpi-label">High/Very High Risk</div>
                     <div class="kpi-value" style="color: #f43f5e;">{high_risk}</div>
                     <div class="kpi-subtext">Needs Urgent Care</div>
                 </div>
@@ -560,14 +563,14 @@ if nav_program == " Executive Dashboard":
 
         st.markdown("---")
 
-        st.markdown("#### **High-Risk Patients Requiring Immediate Medical Intervention**")
-        high_risk_df = df[df["risk_level"] == "High"][
-            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "action_taken", "assessor_name"]
+        st.markdown("#### **High & Very High Risk Patients Requiring Immediate Medical Intervention**")
+        high_risk_df = df[df["risk_level"].isin(["High", "Very High"])][
+            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "risk_level", "action_taken", "assessor_name"]
         ]
         if not high_risk_df.empty:
             st.dataframe(high_risk_df, use_container_width=True)
         else:
-            st.success("No residents currently categorized as High CVD Risk.")
+            st.success("No residents currently categorized as High or Very High CVD Risk.")
 
 # ---------------------------------------------------------
 # MODULE 2: PHILPEN RISK ASSESSMENT FORM
@@ -712,8 +715,68 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"], key="p_exer")
     healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"], key="p_diet")
 
-    risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, sbp_for_calc, bmi, has_diabetes)
-    st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
+    # CALCULATE CVD RISK & COLOR DISPLAY
+    risk_level, risk_pct, risk_color, text_color, recommended_action = calculate_cvd_risk(age, sex, smoker, sbp_for_calc, bmi, has_diabetes)
+    
+    st.markdown(
+        f"""
+        <div style="background-color: {risk_color}; color: {text_color}; padding: 14px 20px; border-radius: 8px; font-weight: bold; margin-bottom: 15px;">
+            <span style="font-size: 1.15rem; color: {text_color} !important;">WHO/ISH Risk Assessment: <strong>{risk_level} Risk ({risk_pct})</strong></span><br>
+            <span style="font-size: 0.95rem; color: {text_color} !important;">💡 Recommended Action: <strong>{recommended_action}</strong></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # BHW ACTION REFERENCE GUIDE MATRIX
+    st.markdown("##### 📌 **BHW Guide: Action Needed To Be Taken**")
+    st.markdown(
+        """
+        <table style="width:100%; border-collapse: collapse; margin-bottom: 20px; background-color: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155;">
+            <thead>
+                <tr style="background-color: #334155; color: #f8fafc; text-align: left;">
+                    <th style="padding: 10px;">Risk Level</th>
+                    <th style="padding: 10px;">Percentage of Risk</th>
+                    <th style="padding: 10px; text-align: center;">Color Indicator</th>
+                    <th style="padding: 10px;">Action Needed To Be Taken</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
+                    <td style="padding: 10px; font-weight: 600;">Low</td>
+                    <td style="padding: 10px;">&lt;5%</td>
+                    <td style="padding: 10px; background-color: #16a34a; color: #ffffff; font-weight: bold; text-align: center;">Green</td>
+                    <td style="padding: 10px;">Counselling only</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
+                    <td style="padding: 10px; font-weight: 600;">Mild</td>
+                    <td style="padding: 10px;">5% to &lt;10%</td>
+                    <td style="padding: 10px; background-color: #eab308; color: #000000; font-weight: bold; text-align: center;">Yellow</td>
+                    <td style="padding: 10px;">Refer to Midwife</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
+                    <td style="padding: 10px; font-weight: 600;">Medium</td>
+                    <td style="padding: 10px;">10% to &lt;20%</td>
+                    <td style="padding: 10px; background-color: #ea580c; color: #ffffff; font-weight: bold; text-align: center;">Orange</td>
+                    <td style="padding: 10px;">Refer to RHU Physician</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
+                    <td style="padding: 10px; font-weight: 600;">High</td>
+                    <td style="padding: 10px;">20% to &lt;30%</td>
+                    <td style="padding: 10px; background-color: #dc2626; color: #ffffff; font-weight: bold; text-align: center;">Red</td>
+                    <td style="padding: 10px;">Urgent referral to Physician/ Hospital</td>
+                </tr>
+                <tr style="color: #f8fafc;">
+                    <td style="padding: 10px; font-weight: 600;">Very High</td>
+                    <td style="padding: 10px;">&ge;30%</td>
+                    <td style="padding: 10px; background-color: #7f1d1d; color: #ffffff; font-weight: bold; text-align: center;">Deep Red</td>
+                    <td style="padding: 10px;">Urgent referral to Physician/ Hospital</td>
+                </tr>
+            </tbody>
+        </table>
+        """,
+        unsafe_allow_html=True,
+    )
 
     action = st.selectbox(
         "Ano ang ginawa? / Action Taken*",
@@ -849,14 +912,14 @@ elif nav_program == "Barangay Database & Analytics":
             htn_df = df[df["has_hypertension"] == "Meron"]
             diab_cnt = len(diab_df)
             htn_cnt = len(htn_df)
-            high_risk_cnt = len(df[df["risk_level"] == "High"])
+            high_risk_cnt = len(df[df["risk_level"].isin(["High", "Very High"])])
             smoker_cnt = len(df[df["is_smoker"] == "Oo"])
             obese_cnt = len(df[df["bmi_class"].str.contains("OBESITY", na=False)])
 
             with m1:
                 st.metric("Total Population Screened", total_count)
             with m2:
-                st.metric("High CVD Risk", high_risk_cnt, delta=f"{round((high_risk_cnt/total_count)*100, 1)}%")
+                st.metric("High/Very High CVD Risk", high_risk_cnt, delta=f"{round((high_risk_cnt/total_count)*100, 1)}%")
             with m3:
                 st.metric("Diabetic Cases", diab_cnt, delta=f"{round((diab_cnt/total_count)*100, 1)}%")
             with m4:
@@ -1108,7 +1171,7 @@ elif nav_program == "Barangay Database & Analytics":
 
                     new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
 
-                    new_risk_level, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
+                    new_risk_level, _, _, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
                     e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
                     e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
 
