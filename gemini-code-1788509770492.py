@@ -141,55 +141,62 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & ACCESSIBLE STYLING
+# STREAMLIT CONFIG & HIGH-CONTRAST STYLING
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="e-FHSIS: Palo, Leyte", layout="wide"
 )
 
-# Custom High-Contrast CSS
+# Custom High-Contrast CSS: Light Green Header, White Background, Black Text
 st.markdown(
     """
     <style>
-    /* Force main app background to solid white and main text to dark slate */
-    .stApp {
+    /* Force main application background to pure white */
+    .stApp, [data-testid="stAppViewContainer"] {
         background-color: #ffffff !important;
-        color: #1e293b !important;
-    }
-    
-    /* Ensure form labels and input texts are highly legible */
-    label, .stMarkdown, p, h1, h2, h3, h4, span {
-        color: #0f172a !important;
+        color: #000000 !important;
     }
 
-    /* High-Contrast Professional Navy Header Banner */
+    /* Force all body text, labels, headers, radio options, and form titles to sharp black */
+    p, span, label, h1, h2, h3, h4, h5, h6, .stMarkdown, div[role="radiogroup"] label {
+        color: #000000 !important;
+        font-weight: 500;
+    }
+
+    /* Manila / Light Green Header Banner */
     .header-container {
-        background-color: #0f2c59;
-        border-bottom: 5px solid #d90429;
-        padding: 22px 20px;
-        border-radius: 8px;
+        background-color: #d4edda;
+        border: 2px solid #b1dfbb;
+        border-left: 8px solid #28a745;
+        padding: 20px;
+        border-radius: 6px;
         text-align: center;
         margin-bottom: 25px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.06);
     }
     .header-container h1 {
-        color: #ffffff !important;
+        color: #155724 !important;
         margin: 0;
-        font-weight: 700;
-        font-size: 2.0rem;
+        font-weight: 800;
+        font-size: 2.1rem;
     }
     .header-container p {
-        color: #ffca28 !important;
+        color: #1e4620 !important;
         margin: 6px 0 0 0;
-        font-size: 1.05rem;
+        font-size: 1.1rem;
         font-weight: 600;
+    }
+
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+        border-right: 1px solid #dee2e6;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# High-Contrast System Title Banner
+# Title Banner
 st.markdown(
     """
     <div class="header-container">
@@ -225,7 +232,7 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------------------------------------------
-# SIDEBAR NAVIGATION
+# SIDEBAR NAVIGATION (RESTORED FULL MODULE LIST)
 # ---------------------------------------------------------
 st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
 
@@ -235,7 +242,7 @@ if st.sidebar.button("Logout"):
     st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.write("**Health Programs Navigation**")
+st.sidebar.markdown("**Health Programs Navigation**")
 
 nav_program = st.sidebar.radio(
     "Select Program Module:",
