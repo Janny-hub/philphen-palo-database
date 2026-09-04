@@ -71,9 +71,10 @@ def init_db():
 init_db()
 
 # ---------------------------------------------------------
-# BARANGAY CREDENTIALS
+# MUNICIPAL & BARANGAY CREDENTIALS
 # ---------------------------------------------------------
 BARANGAY_CREDENTIALS = {
+    "paloadmin": "palo2026",  # Municipal Admin Credential
     "Anahaway": "anah123",
     "Arado": "arad123",
     "Baras": "bara123",
@@ -108,6 +109,9 @@ BARANGAY_CREDENTIALS = {
     "Teraza": "tera123",
     "San Fernando": "fern123",
 }
+
+# List of actual barangays (excluding admin account)
+ONLY_BARANGAYS = [b for b in BARANGAY_CREDENTIALS.keys() if b != "paloadmin"]
 
 # ---------------------------------------------------------
 # SPECIFIC MEDICATIONS LISTS
@@ -445,11 +449,11 @@ if "authenticated" not in st.session_state:
     st.session_state["user_brgy"] = ""
 
 if not st.session_state["authenticated"]:
-    st.subheader("Barangay Health Portal Login")
+    st.subheader("Palo Health Portal Login")
 
     with st.form("login_form"):
-        username = st.selectbox("Select Barangay (Username)", list(BARANGAY_CREDENTIALS.keys()))
-        password = st.text_input("Barangay Access Password", type="password")
+        username = st.selectbox("Select Account / Barangay (Username)", list(BARANGAY_CREDENTIALS.keys()))
+        password = st.text_input("Access Password", type="password")
         submit = st.form_submit_button("Login")
 
         if submit:
@@ -458,13 +462,20 @@ if not st.session_state["authenticated"]:
                 st.session_state["user_brgy"] = username
                 st.rerun()
             else:
-                st.error("Incorrect password for the selected Barangay.")
+                st.error("Incorrect password for the selected account.")
     st.stop()
+
+# Helper Flag for Admin Mode
+is_admin = (st.session_state["user_brgy"] == "paloadmin")
 
 # ---------------------------------------------------------
 # SIDEBAR NAVIGATION & DEVELOPER CREDIT
 # ---------------------------------------------------------
-st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
+if is_admin:
+    st.sidebar.markdown("### 🏛️ **Municipal Administrator**")
+    st.sidebar.caption("Palo, Leyte Health System (All Barangays)")
+else:
+    st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
 
 if st.sidebar.button("Logout"):
     st.session_state["authenticated"] = False
@@ -500,20 +511,26 @@ nav_program = st.sidebar.radio(
 
 sidebar_progress_box = st.sidebar.empty()
 
-# Fetch Barangay Dataset
+# Fetch Dataset (Admin sees all barangays; Barangay user sees only their barangay)
 conn = sqlite3.connect("philpen_palo.db")
-df = pd.read_sql_query(
-    "SELECT * FROM assessments WHERE barangay = ?",
-    conn,
-    params=(st.session_state["user_brgy"],),
-)
+if is_admin:
+    df = pd.read_sql_query("SELECT * FROM assessments", conn)
+else:
+    df = pd.read_sql_query(
+        "SELECT * FROM assessments WHERE barangay = ?",
+        conn,
+        params=(st.session_state["user_brgy"],),
+    )
 conn.close()
+
+# Dynamic Title Header for Views
+portal_location_title = "Municipality of Palo (All Barangays Overview)" if is_admin else f"Barangay {st.session_state['user_brgy']}"
 
 # ---------------------------------------------------------
 # MODULE 1: EXECUTIVE DASHBOARD
 # ---------------------------------------------------------
 if nav_program == " Executive Dashboard":
-    st.subheader(f"Barangay Health Executive Dashboard — {st.session_state['user_brgy']}")
+    st.subheader(f"Executive Health Dashboard — {portal_location_title}")
 
     if df.empty:
         st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
@@ -598,11 +615,17 @@ if nav_program == " Executive Dashboard":
             age_sex_df = pd.crosstab(df["age_group"], df["sex"])
             st.line_chart(age_sex_df)
 
+        if is_admin:
+            st.markdown("---")
+            st.markdown("#### 🏛️ **Barangay Screening Performance Breakdown**")
+            brgy_counts = df["barangay"].value_counts()
+            st.bar_chart(brgy_counts, color="#38bdf8")
+
         st.markdown("---")
 
         st.markdown("#### **High & Very High Risk Patients Requiring Immediate Medical Intervention**")
         high_risk_df = df[df["risk_level"].isin(["High", "Very High"])][
-            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "risk_level", "action_taken", "assessor_name"]
+            ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "risk_level", "action_taken", "assessor_name"]
         ]
         if not high_risk_df.empty:
             st.dataframe(high_risk_df, use_container_width=True)
@@ -613,7 +636,7 @@ if nav_program == " Executive Dashboard":
 # MODULE 2: PHILPEN RISK ASSESSMENT FORM
 # ---------------------------------------------------------
 elif nav_program == "PhilPEN Risk Assessment Form":
-    st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
+    st.subheader(f"PhilPEN Risk Assessment Form — {portal_location_title}")
 
     st.markdown("**1. General & Assessor Information**")
     col0_a, col0_b = st.columns(2)
@@ -630,7 +653,10 @@ elif nav_program == "PhilPEN Risk Assessment Form":
         middle_name = st.text_input("Gitnang Pangalan (Middle Name)", key="p_mname")
     with col3:
         zone = st.text_input("Zone / Purok*", key="p_zone")
-        barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
+        if is_admin:
+            target_barangay = st.selectbox("Barangay*", ONLY_BARANGAYS, key="p_brgy_select")
+        else:
+            target_barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
 
     col_dob, col_sex = st.columns(2)
     with col_dob:
@@ -876,7 +902,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
                     first_name,
                     middle_name,
                     zone,
-                    st.session_state["user_brgy"],
+                    target_barangay,
                     str(dob),
                     age,
                     sex,
@@ -911,13 +937,13 @@ elif nav_program == "PhilPEN Risk Assessment Form":
             )
             conn.commit()
             conn.close()
-            st.success("Record successfully saved to the barangay database!")
+            st.success("Record successfully saved to the database!")
 
 # ---------------------------------------------------------
 # MODULE 3: DATABASE & ANALYTICS
 # ---------------------------------------------------------
 elif nav_program == "Barangay Database & Analytics":
-    st.subheader(f"PhilPEN Database & Statistical Reports — Barangay {st.session_state['user_brgy']}")
+    st.subheader(f"PhilPEN Database & Statistical Reports — {portal_location_title}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
         ["📋 Master Records Data Table", "📊 Modern Analytics & Demographics", "✏️ Edit Resident Record"]
@@ -927,14 +953,15 @@ elif nav_program == "Barangay Database & Analytics":
         if not df.empty:
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode("utf-8")
+            export_filename = "PhilPEN_Municipal_Master_Palo.csv" if is_admin else f"PhilPEN_Records_{st.session_state['user_brgy']}.csv"
             st.download_button(
-                label=f"Export CSV ({st.session_state['user_brgy']})",
+                label=f"Export CSV ({'All Barangays' if is_admin else st.session_state['user_brgy']})",
                 data=csv,
-                file_name=f"PhilPEN_Records_{st.session_state['user_brgy']}.csv",
+                file_name=export_filename,
                 mime="text/csv",
             )
         else:
-            st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
+            st.info("No records found in the database.")
 
     with tab_analytics:
         if df.empty:
@@ -954,7 +981,7 @@ elif nav_program == "Barangay Database & Analytics":
             htn_cnt = len(htn_df)
             high_risk_cnt = len(df[df["risk_level"].isin(["High", "Very High"])])
 
-            st.markdown("#### 📈 **Barangay Epidemiological & Demographics Overview**")
+            st.markdown("#### 📈 **Epidemiological & Demographics Overview**")
 
             k1, k2, k3, k4, k5, k6 = st.columns(6)
             with k1:
@@ -1026,6 +1053,25 @@ elif nav_program == "Barangay Database & Analytics":
 
             st.markdown("<br>", unsafe_allow_html=True)
 
+            # ADMIN SPECIAL: BARANGAY SUMMARY TABLE
+            if is_admin:
+                st.markdown("### 🏛️ **Barangay Level Screening Summary Matrix**")
+                brgy_summary = df["barangay"].value_counts().reset_index()
+                brgy_summary.columns = ["Barangay", "Total Screened"]
+                brgy_rows = [
+                    [r["Barangay"], r["Total Screened"], f"{round((r['Total Screened']/total_count)*100, 1)}%"]
+                    for _, r in brgy_summary.iterrows()
+                ]
+                st.markdown(
+                    render_modern_table_html(
+                        "Palo Municipal Screening Progress per Barangay",
+                        ["Barangay Name", "Total Residents Screened", "Municipal Share (%)"],
+                        brgy_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+                st.markdown("---")
+
             # ---------------------------------------------------------
             # SECTION 1: MONTHLY ENTRIES BREAKDOWN (JANUARY - DECEMBER)
             # ---------------------------------------------------------
@@ -1067,7 +1113,7 @@ elif nav_program == "Barangay Database & Analytics":
                     <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
                         <h5 style="color: #818cf8; margin-top: 0;">📌 Month Tracking Notes</h5>
                         <p style="font-size: 0.85rem; color: #94a3b8;">
-                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa ng mga BHW (Lalaki, Babae, at Kabuuan) para sa buong taon.
+                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa (Lalaki, Babae, at Kabuuan) para sa buong taon.
                         </p>
                     </div>
                     """,
@@ -1242,44 +1288,16 @@ elif nav_program == "Barangay Database & Analytics":
             with roster_col1:
                 st.markdown("#### 🩸 **List of Diabetic Residents**")
                 if not diab_df.empty:
-                    diab_list = diab_df[
-                        [
-                            "id",
-                            "last_name",
-                            "first_name",
-                            "age",
-                            "sex",
-                            "zone",
-                            "takes_diabetes_meds",
-                            "diabetes_meds",
-                            "bp_avg",
-                            "action_taken",
-                            "assessor_name",
-                        ]
-                    ]
-                    st.dataframe(diab_list, use_container_width=True)
+                    diab_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"]
+                    st.dataframe(diab_df[diab_cols], use_container_width=True)
                 else:
                     st.success("No diabetic residents recorded.")
 
             with roster_col2:
                 st.markdown("#### 🫀 **List of Hypertensive Residents**")
                 if not htn_df.empty:
-                    htn_list = htn_df[
-                        [
-                            "id",
-                            "last_name",
-                            "first_name",
-                            "age",
-                            "sex",
-                            "zone",
-                            "takes_htn_meds",
-                            "hypertension_meds",
-                            "bp_avg",
-                            "action_taken",
-                            "assessor_name",
-                        ]
-                    ]
-                    st.dataframe(htn_list, use_container_width=True)
+                    htn_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"]
+                    st.dataframe(htn_df[htn_cols], use_container_width=True)
                 else:
                     st.success("No hypertensive residents recorded.")
 
@@ -1288,7 +1306,7 @@ elif nav_program == "Barangay Database & Analytics":
             st.info("No records available to edit.")
         else:
             resident_options = {
-                f"ID {row['id']}: {row['last_name']}, {row['first_name']} ({row['assessment_date']})": row["id"]
+                f"ID {row['id']}: [{row['barangay']}] {row['last_name']}, {row['first_name']} ({row['assessment_date']})": row["id"]
                 for _, row in df.iterrows()
             }
             selected_label = st.selectbox("Select Resident Record to Edit:", list(resident_options.keys()))
@@ -1322,7 +1340,12 @@ elif nav_program == "Barangay Database & Analytics":
                     e_middle_name = st.text_input("Gitnang Pangalan (Middle Name)", value=str(rec["middle_name"] or ""))
                 with ec3:
                     e_zone = st.text_input("Zone / Purok", value=str(rec["zone"]))
-                    e_barangay = st.text_input("Barangay", value=str(rec["barangay"]), disabled=True)
+                    if is_admin:
+                        curr_brgy_val = str(rec["barangay"])
+                        e_brgy_idx = ONLY_BARANGAYS.index(curr_brgy_val) if curr_brgy_val in ONLY_BARANGAYS else 0
+                        e_barangay = st.selectbox("Barangay", ONLY_BARANGAYS, index=e_brgy_idx)
+                    else:
+                        e_barangay = st.text_input("Barangay", value=str(rec["barangay"]), disabled=True)
 
                 ec_dob, ec_sex = st.columns(2)
                 with ec_dob:
@@ -1449,7 +1472,7 @@ elif nav_program == "Barangay Database & Analytics":
                     c.execute(
                         """
                         UPDATE assessments SET
-                            assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?,
+                            assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?,
                             birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
                             waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
                             has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
@@ -1465,6 +1488,7 @@ elif nav_program == "Barangay Database & Analytics":
                             e_first_name,
                             e_middle_name,
                             e_zone,
+                            e_barangay,
                             str(e_dob),
                             e_age,
                             e_sex,
