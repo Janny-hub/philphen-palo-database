@@ -195,32 +195,88 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & MODERN UI STYLING
+# STREAMLIT CONFIG & HIGH-CONTRAST MODERN STYLING
 # ---------------------------------------------------------
 st.set_page_config(page_title="e-FHSIS | Palo, Leyte Portal", layout="wide", page_icon="🏥")
 
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-family: 'Inter', sans-serif !important;
     }
 
-    /* Overall Background */
-    .stApp {
+    /* Force Light Theme Canvas & High-Contrast Dark Text globally */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: #f8fafc !important;
         color: #0f172a !important;
     }
 
-    /* Modern Top Header Banner */
+    /* ALL Labels, Paragraphs, Headings forced to High-Contrast Slate Dark */
+    p, span, label, h1, h2, h3, h4, h5, h6,
+    .stMarkdown, .stMarkdown *,
+    div[role="radiogroup"] label,
+    div[role="group"] label,
+    [data-testid="stWidgetLabel"] * {
+        color: #0f172a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Crisp Input Boxes (White Background + Dark Slate Text + Dark Border) */
+    input, textarea, select,
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1.5px solid #64748b !important;
+        border-radius: 8px !important;
+    }
+
+    /* Direct text inside HTML input tags */
+    input, textarea {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Fix Date Picker Input Text Visibility */
+    .stDateInput input,
+    div[data-baseweb="datepicker"] input,
+    div[data-baseweb="datepicker"] > div {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+        font-weight: 700 !important;
+    }
+
+    /* Popover, Calendar, Dropdown Menus */
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"] *,
+    ul[role="listbox"] *,
+    div[role="dialog"] * {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    /* Multiselect Badge Tags */
+    span[data-baseweb="tag"] {
+        background-color: #0f766e !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+    }
+    span[data-baseweb="tag"] * {
+        color: #ffffff !important;
+    }
+
+    /* Header Banner */
     .header-banner {
-        background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #0f766e 100%);
         padding: 24px 30px;
-        border-radius: 16px;
-        color: #ffffff;
-        box-shadow: 0 10px 25px -5px rgba(13, 148, 136, 0.25);
+        border-radius: 14px;
+        color: #ffffff !important;
+        box-shadow: 0 8px 20px rgba(15, 118, 110, 0.2);
         margin-bottom: 25px;
     }
     .header-banner h1 {
@@ -228,7 +284,6 @@ st.markdown(
         font-size: 2rem !important;
         font-weight: 800 !important;
         margin: 0 !important;
-        letter-spacing: -0.02em;
     }
     .header-banner p {
         color: #e0f2fe !important;
@@ -237,102 +292,74 @@ st.markdown(
         font-weight: 500 !important;
     }
 
-    /* Modern KPI Cards */
+    /* Modern KPI Cards with High Contrast */
     .kpi-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s ease;
-    }
-    .kpi-card:hover {
-        transform: translateY(-2px);
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
     }
     .kpi-label {
-        font-size: 0.825rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
     }
     .kpi-value {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin-top: 4px;
-        margin-bottom: 2px;
+        font-size: 2.2rem !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        margin-top: 4px !important;
     }
     .kpi-subtext {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #0d9488;
-    }
-
-    /* Modernized Input Fields */
-    div[data-baseweb="input"] > div,
-    div[data-baseweb="select"] > div,
-    input, textarea, select {
-        background-color: #ffffff !important;
-        color: #0f172a !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-radius: 10px !important;
-        font-weight: 500 !important;
-    }
-    div[data-baseweb="input"] > div:focus-within,
-    div[data-baseweb="select"] > div:focus-within {
-        border-color: #0d9488 !important;
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
-    }
-
-    /* Date Picker Input Fixing */
-    .stDateInput input {
-        color: #0f172a !important;
-        -webkit-text-fill-color: #0f172a !important;
+        font-size: 0.825rem !important;
         font-weight: 600 !important;
-        background-color: #ffffff !important;
-    }
-
-    /* Buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, #0d9488 0%, #059669 100%) !important;
-        color: #ffffff !important;
-        border-radius: 10px !important;
-        border: none !important;
-        font-weight: 700 !important;
-        padding: 10px 24px !important;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;
-    }
-    .stButton > button:hover {
-        background: linear-gradient(135deg, #0f766e 0%, #047857 100%) !important;
-        box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3) !important;
+        color: #0f766e !important;
     }
 
     /* Red Flag Banner for Double Entry */
     .flag-red-card {
         background-color: #fef2f2 !important;
-        border: 1.5px solid #fecaca !important;
-        border-left: 6px solid #ef4444 !important;
-        padding: 18px !important;
-        border-radius: 12px !important;
+        border: 2px solid #fca5a5 !important;
+        border-left: 8px solid #dc2626 !important;
+        padding: 16px !important;
+        border-radius: 10px !important;
         margin-bottom: 20px !important;
     }
     .flag-red-card h4 {
         color: #991b1b !important;
         margin: 0 0 6px 0 !important;
+        font-size: 1.1rem !important;
         font-weight: 800 !important;
-        font-size: 1.05rem !important;
     }
     .flag-red-card p {
         color: #7f1d1d !important;
         margin: 0 !important;
         font-size: 0.95rem !important;
+        font-weight: 600 !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        background: #0f766e !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        padding: 10px 24px !important;
+        box-shadow: 0 4px 10px rgba(15, 118, 110, 0.25) !important;
+    }
+    .stButton > button:hover {
+        background: #115e59 !important;
+        color: #ffffff !important;
     }
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
         background-color: #ffffff !important;
-        border-right: 1px solid #e2e8f0 !important;
+        border-right: 1.5px solid #e2e8f0 !important;
     }
     </style>
     """,
@@ -414,7 +441,7 @@ conn.close()
 # MODULE 1: EXECUTIVE DASHBOARD
 # ---------------------------------------------------------
 if nav_program == " Executive Dashboard":
-    st.subheader(f" Baragay Health Executive Dashboard — {st.session_state['user_brgy']}")
+    st.subheader(f"Barangay Health Executive Dashboard — {st.session_state['user_brgy']}")
 
     if df.empty:
         st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
@@ -443,8 +470,8 @@ if nav_program == " Executive Dashboard":
                 f"""
                 <div class="kpi-card">
                     <div class="kpi-label">High CVD Risk</div>
-                    <div class="kpi-value" style="color: #ef4444;">{high_risk}</div>
-                    <div class="kpi-subtext">Needs Urgent Follow-up</div>
+                    <div class="kpi-value" style="color: #dc2626;">{high_risk}</div>
+                    <div class="kpi-subtext">Needs Urgent Referral</div>
                 </div>
             """,
                 unsafe_allow_html=True,
@@ -454,8 +481,8 @@ if nav_program == " Executive Dashboard":
                 f"""
                 <div class="kpi-card">
                     <div class="kpi-label">Diabetic Cases</div>
-                    <div class="kpi-value" style="color: #f59e0b;">{diabetic_ct}</div>
-                    <div class="kpi-subtext">{round((diabetic_ct/total_assessed)*100, 1) if total_assessed else 0}% Prev. Rate</div>
+                    <div class="kpi-value" style="color: #d97706;">{diabetic_ct}</div>
+                    <div class="kpi-subtext">{round((diabetic_ct/total_assessed)*100, 1) if total_assessed else 0}% Rate</div>
                 </div>
             """,
                 unsafe_allow_html=True,
@@ -465,8 +492,8 @@ if nav_program == " Executive Dashboard":
                 f"""
                 <div class="kpi-card">
                     <div class="kpi-label">Hypertensive</div>
-                    <div class="kpi-value" style="color: #06b6d4;">{hypertensive_ct}</div>
-                    <div class="kpi-subtext">{round((hypertensive_ct/total_assessed)*100, 1) if total_assessed else 0}% Prev. Rate</div>
+                    <div class="kpi-value" style="color: #0284c7;">{hypertensive_ct}</div>
+                    <div class="kpi-subtext">{round((hypertensive_ct/total_assessed)*100, 1) if total_assessed else 0}% Rate</div>
                 </div>
             """,
                 unsafe_allow_html=True,
@@ -476,7 +503,7 @@ if nav_program == " Executive Dashboard":
                 f"""
                 <div class="kpi-card">
                     <div class="kpi-label">RHU Referrals</div>
-                    <div class="kpi-value" style="color: #8b5cf6;">{rhu_ref_ct}</div>
+                    <div class="kpi-value" style="color: #7c3aed;">{rhu_ref_ct}</div>
                     <div class="kpi-subtext">Physician Care</div>
                 </div>
             """,
@@ -491,7 +518,7 @@ if nav_program == " Executive Dashboard":
         with chart_col1:
             st.markdown("#### **CVD Risk Stratification Breakdown**")
             risk_counts = df["risk_level"].value_counts()
-            st.bar_chart(risk_counts, color="#0d9488")
+            st.bar_chart(risk_counts, color="#0f766e")
 
         with chart_col2:
             st.markdown("#### **Demographics: Age Group & Sex Distribution**")
@@ -504,7 +531,7 @@ if nav_program == " Executive Dashboard":
         st.markdown("---")
 
         # Actionable Priority Patients Table
-        st.markdown("####  **High-Risk Patients Requiring Medical Intervention**")
+        st.markdown("#### **High-Risk Patients Requiring Immediate Medical Intervention**")
         high_risk_df = df[df["risk_level"] == "High"][
             ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "has_diabetes", "action_taken"]
         ]
@@ -558,7 +585,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
                 <p>
                     <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) has already been assessed on 
                     <strong>{prev_date}</strong> for calendar year <strong>{assessment_year}</strong>.<br>
-                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per year</u>.</em>
+                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per calendar year</u>.</em>
                 </p>
             </div>
             """,
