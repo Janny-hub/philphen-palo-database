@@ -46,8 +46,7 @@ def init_db():
             is_exercising TEXT,
             eats_healthy TEXT,
             risk_level TEXT,
-            action_taken TEXT,
-            bhw_name TEXT
+            action_taken TEXT
         )
     """
     )
@@ -58,7 +57,7 @@ def init_db():
 init_db()
 
 # ---------------------------------------------------------
-# BARANGAY CREDENTIALS
+# BARANGAY CREDENTIALS (Username: Password)
 # ---------------------------------------------------------
 BARANGAY_CREDENTIALS = {
     "Anahaway": "anah123",
@@ -97,7 +96,34 @@ BARANGAY_CREDENTIALS = {
 }
 
 # ---------------------------------------------------------
-# COMPUTATION HELPER FUNCTIONS
+# COMMON PHILIPPINE MEDICATIONS LIST
+# ---------------------------------------------------------
+DIABETES_MEDICATIONS = [
+    "Wala / None",
+    "Metformin (500mg/850mg)",
+    "Gliclazide (30mg/80mg)",
+    "Glimepiride (2mg/4mg)",
+    "Insulin Human NPH / Regular",
+    "Sitagliptin",
+    "Empagliflozin",
+    "Iba pa (Others)",
+]
+
+HYPERTENSION_MEDICATIONS = [
+    "Wala / None",
+    "Amlodipine (5mg/10mg)",
+    "Losartan (50mg/100mg)",
+    "Metoprolol (50mg/100mg)",
+    "Captopril (25mg)",
+    "Enalapril (5mg/20mg)",
+    "Hydrochlorothiazide / HCTZ (12.5mg/25mg)",
+    "Telmisartan (40mg/80mg)",
+    "Carvedilol (6.25mg/12.5mg)",
+    "Iba pa (Others)",
+]
+
+# ---------------------------------------------------------
+# HELPER CALCULATIONS & DUPLICATE CHECK
 # ---------------------------------------------------------
 def calculate_age(born):
     today = datetime.date.today()
@@ -132,69 +158,216 @@ def classify_waist(sex, waist):
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
     if diabetes == "Meron" or sbp >= 160 or bmi >= 25.0:
         if age >= 60 or sbp >= 160:
-            return "High", "20% to <30%"
-        return "Medium", "10% to <20%"
+            return "High", "20% to <30%", "Red"
+        return "Medium", "10% to <20%", "Orange"
     elif smoker == "Oo" or sbp >= 140:
-        return "Mild", "5% to <10%"
-    return "Low", "<5%"
+        return "Mild", "5% to <10%", "Yellow"
+    return "Low", "<5%", "Green"
+
+
+def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
+    if not first_name.strip() or not last_name.strip():
+        return False, None
+
+    conn = sqlite3.connect("philpen_palo.db")
+    c = conn.cursor()
+
+    query = """
+        SELECT id, assessment_date FROM assessments 
+        WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?))
+          AND LOWER(TRIM(last_name)) = LOWER(TRIM(?))
+          AND birthday = ?
+          AND strftime('%Y', assessment_date) = ?
+    """
+    params = [first_name, last_name, str(dob), str(year)]
+
+    if exclude_id:
+        query += " AND id != ?"
+        params.append(exclude_id)
+
+    c.execute(query, params)
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return True, result[1]
+    return False, None
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & CUSTOM STYLING
+# STREAMLIT CONFIG & LOW-GLARE DARK CHARCOAL STYLING
 # ---------------------------------------------------------
-st.set_page_config(
-    page_title="Palo Community Health System", layout="wide"
-)
+st.set_page_config(page_title="e-FHSIS | Palo, Leyte Portal", layout="wide", page_icon="🏥")
 
 st.markdown(
     """
     <style>
-    /* Main App Background */
-    .stApp {
-        background-color: #f4f6f8;
-    }
-    
-    /* Header Banner Styling */
-    .header-container {
-        background: linear-gradient(90deg, #d90429 0%, #ffb703 100%);
-        padding: 22px;
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
-    }
-    .header-container h1 {
-        color: #ffffff !important;
-        margin: 0;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-    }
-    .header-container p {
-        color: #fff3bf;
-        margin: 6px 0 0 0;
-        font-size: 1.1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif !important;
     }
 
-    /* Card Metrics Styling */
-    div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    /* Soft Dark Canvas Background */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+    }
+
+    /* All Standard Text & Labels */
+    p, span, label, h1, h2, h3, h4, h5, h6,
+    .stMarkdown, .stMarkdown *,
+    div[role="radiogroup"] label,
+    div[role="group"] label,
+    [data-testid="stWidgetLabel"] * {
+        color: #f8fafc !important;
+        font-weight: 500 !important;
+    }
+
+    /* Dark Input Cards & Form Fields */
+    input, textarea, select,
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+        border-radius: 8px !important;
+    }
+
+    input, textarea {
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
+        font-weight: 600 !important;
+    }
+
+    /* Datepicker Fixes */
+    .stDateInput input,
+    div[data-baseweb="datepicker"] input,
+    div[data-baseweb="datepicker"] > div {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
+        font-weight: 600 !important;
+    }
+
+    /* Menus & Popovers */
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"] *,
+    ul[role="listbox"] *,
+    div[role="dialog"] * {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+    }
+
+    /* Multiselect Badge Tags */
+    span[data-baseweb="tag"] {
+        background-color: #312e81 !important;
+        color: #e0e7ff !important;
+        border: 1px solid #4338ca !important;
+        border-radius: 6px !important;
+    }
+    span[data-baseweb="tag"] * {
+        color: #e0e7ff !important;
+    }
+
+    /* Header Banner - Dark Gradient */
+    .header-banner {
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        border: 1px solid #312e81;
+        padding: 22px 28px;
+        border-radius: 12px;
+        color: #ffffff !important;
+        margin-bottom: 25px;
+    }
+    .header-banner h1 {
+        color: #f8fafc !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+    }
+    .header-banner p {
+        color: #94a3b8 !important;
+        font-size: 0.95rem !important;
+        margin-top: 4px !important;
+    }
+
+    /* Modern KPI Cards */
+    .kpi-card {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 10px !important;
+        padding: 18px !important;
+    }
+    .kpi-label {
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        color: #94a3b8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+    .kpi-value {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        color: #f8fafc !important;
+        margin-top: 4px !important;
+    }
+    .kpi-subtext {
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        color: #818cf8 !important;
+    }
+
+    /* Red Flag Banner for Double Entry */
+    .flag-red-card {
+        background-color: #2a1215 !important;
+        border: 1px solid #991b1b !important;
+        border-left: 6px solid #f43f5e !important;
+        padding: 16px !important;
+        border-radius: 8px !important;
+        margin-bottom: 20px !important;
+    }
+    .flag-red-card h4 {
+        color: #fca5a5 !important;
+        margin: 0 0 6px 0 !important;
+        font-size: 1rem !important;
+        font-weight: 700 !important;
+    }
+    .flag-red-card p {
+        color: #fecdd3 !important;
+        margin: 0 !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        background: #4f46e5 !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 600 !important;
+        padding: 8px 20px !important;
+    }
+    .stButton > button:hover {
+        background: #4338ca !important;
+        color: #ffffff !important;
+    }
+
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #1e293b !important;
+        border-right: 1px solid #334155 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Header Display
+# Header Title Banner
 st.markdown(
     """
-    <div class="header-container">
-        <h1>Community Health Information System</h1>
-        <p>Rural Health Unit — Municipality of Palo, Leyte</p>
+    <div class="header-banner">
+        <h1>e-FHSIS Healthcare Portal</h1>
+        <p>Rural Health Unit Data Management & PhilPEN Analytics — Palo, Leyte</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -208,10 +381,11 @@ if "authenticated" not in st.session_state:
     st.session_state["user_brgy"] = ""
 
 if not st.session_state["authenticated"]:
-    st.subheader("Barangay Portal Login")
+    st.subheader("Barangay Health Portal Login")
+
     with st.form("login_form"):
-        username = st.selectbox("Select Barangay Username", list(BARANGAY_CREDENTIALS.keys()))
-        password = st.text_input("Barangay Password", type="password")
+        username = st.selectbox("Select Barangay (Username)", list(BARANGAY_CREDENTIALS.keys()))
+        password = st.text_input("Barangay Access Password", type="password")
         submit = st.form_submit_button("Login")
 
         if submit:
@@ -224,154 +398,308 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------------------------------------------
-# NAVIGATION & SIDEBAR
+# SIDEBAR NAVIGATION
 # ---------------------------------------------------------
-st.sidebar.title(f"📍 Brgy. {st.session_state['user_brgy']}")
+st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
+
 if st.sidebar.button("Logout"):
     st.session_state["authenticated"] = False
     st.session_state["user_brgy"] = ""
     st.rerun()
 
 st.sidebar.markdown("---")
-menu = st.sidebar.radio(
-    "Program Modules",
+st.sidebar.markdown("**Navigation Menu**")
+
+nav_program = st.sidebar.radio(
+    "Select Portal View:",
     [
-        "📊 Dashboard Overview",
-        "📋 PhilPEN Risk Assessment",
-        "📈 PhilPEN Data Analytics",
-        "👶 Nutritional Status (0-59 mos)",
-        "💉 Immunization (EPI)",
-        "🤰 Maternal Care",
-        "🐌 Schistosomiasis Program",
-        "🫁 National TB Program (NTP)",
+        " Executive Dashboard",
+        "PhilPEN Risk Assessment Form",
+        "Barangay Database & Analytics",
+        "Nutritional Status (0-59 mos)",
+        "Expanded Program on Immunization",
+        "Maternal Care",
+        "Schistosomiasis",
+        "NTP",
     ],
 )
 
-# ---------------------------------------------------------
-# MODULE 1: DASHBOARD OVERVIEW
-# ---------------------------------------------------------
-if menu == "📊 Dashboard Overview":
-    st.subheader(f"Welcome, Health Workers of Brgy. {st.session_state['user_brgy']}!")
-    st.info("Select a program module from the sidebar menu to input data, review health records, or generate analytical reports.")
+# Fetch Current Barangay Dataset
+conn = sqlite3.connect("philpen_palo.db")
+df = pd.read_sql_query(
+    "SELECT * FROM assessments WHERE barangay = ?",
+    conn,
+    params=(st.session_state["user_brgy"],),
+)
+conn.close()
 
-    conn = sqlite3.connect("philpen_palo.db")
-    df = pd.read_sql_query("SELECT * FROM assessments WHERE barangay = ?", conn, params=(st.session_state["user_brgy"],))
-    conn.close()
+# ---------------------------------------------------------
+# MODULE 1: EXECUTIVE DASHBOARD
+# ---------------------------------------------------------
+if nav_program == " Executive Dashboard":
+    st.subheader(f"Barangay Health Executive Dashboard — {st.session_state['user_brgy']}")
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total PhilPEN Screened", len(df))
-    m2.metric("Adults (20-64 yrs)", len(df[(df['age'] >= 20) & (df['age'] <= 64)]))
-    m3.metric("Seniors (65+ yrs)", len(df[df['age'] >= 65]))
+    if df.empty:
+        st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
+    else:
+        total_assessed = len(df)
+        high_risk = len(df[df["risk_level"] == "High"])
+        diabetic_ct = len(df[df["has_diabetes"] == "Meron"])
+        hypertensive_ct = len(df[df["has_hypertension"] == "Meron"])
+        rhu_ref_ct = len(df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)])
+
+        k1, k2, k3, k4, k5 = st.columns(5)
+        with k1:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Assessed</div>
+                    <div class="kpi-value">{total_assessed}</div>
+                    <div class="kpi-subtext">Residents Screened</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k2:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">High CVD Risk</div>
+                    <div class="kpi-value" style="color: #f43f5e;">{high_risk}</div>
+                    <div class="kpi-subtext">Needs Urgent Care</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k3:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Diabetic Cases</div>
+                    <div class="kpi-value" style="color: #fbbf24;">{diabetic_ct}</div>
+                    <div class="kpi-subtext">{round((diabetic_ct/total_assessed)*100, 1) if total_assessed else 0}% Rate</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k4:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Hypertensive</div>
+                    <div class="kpi-value" style="color: #38bdf8;">{hypertensive_ct}</div>
+                    <div class="kpi-subtext">{round((hypertensive_ct/total_assessed)*100, 1) if total_assessed else 0}% Rate</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k5:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">RHU Referrals</div>
+                    <div class="kpi-value" style="color: #a78bfa;">{rhu_ref_ct}</div>
+                    <div class="kpi-subtext">Physician Care</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        chart_col1, chart_col2 = st.columns(2)
+
+        with chart_col1:
+            st.markdown("#### **CVD Risk Stratification Breakdown**")
+            risk_counts = df["risk_level"].value_counts()
+            st.bar_chart(risk_counts, color="#6366f1")
+
+        with chart_col2:
+            st.markdown("#### **Demographics: Age Group & Sex Distribution**")
+            bins = [0, 19, 30, 45, 64, 120]
+            labels = ["<20", "20-29", "30-44", "45-64", "65+"]
+            df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+            age_sex_df = pd.crosstab(df["age_group"], df["sex"])
+            st.line_chart(age_sex_df)
+
+        st.markdown("---")
+
+        st.markdown("#### **High-Risk Patients Requiring Immediate Medical Intervention**")
+        high_risk_df = df[df["risk_level"] == "High"][
+            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "has_diabetes", "action_taken"]
+        ]
+        if not high_risk_df.empty:
+            st.dataframe(high_risk_df, use_container_width=True)
+        else:
+            st.success("No residents currently categorized as High CVD Risk.")
 
 # ---------------------------------------------------------
 # MODULE 2: PHILPEN RISK ASSESSMENT FORM
 # ---------------------------------------------------------
-elif menu == "📋 PhilPEN Risk Assessment":
-    st.subheader(f"PhilPEN Risk Assessment Form — Brgy. {st.session_state['user_brgy']}")
+elif nav_program == "PhilPEN Risk Assessment Form":
+    st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
-    with st.form("assessment_form"):
-        st.write("**1. General Information**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            assessment_date = st.date_input("Date of Assessment*", datetime.date.today())
-            last_name = st.text_input("Apilido (Last Name)*")
-        with col2:
-            first_name = st.text_input("Pangalan (Given Name)*")
-            middle_name = st.text_input("Gitnang Pangalan (Middle Name)")
-        with col3:
-            zone = st.text_input("Zone / Purok*")
-            barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
+    progress_container = st.container()
 
-        col_dob, col_sex = st.columns(2)
-        with col_dob:
-            dob = st.date_input(
-                "Birthday*",
-                min_value=datetime.date(1920, 1, 1),
-                max_value=datetime.date.today(),
+    st.markdown("**1. General Information**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
+        last_name = st.text_input("Apilido (Last Name)*", key="p_lname")
+    with col2:
+        first_name = st.text_input("Pangalan (Given Name)*", key="p_fname")
+        middle_name = st.text_input("Gitnang Pangalan (Middle Name)", key="p_mname")
+    with col3:
+        zone = st.text_input("Zone / Purok*", key="p_zone")
+        barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
+
+    col_dob, col_sex = st.columns(2)
+    with col_dob:
+        dob = st.date_input(
+            "Birthday*",
+            min_value=datetime.date(1920, 1, 1),
+            max_value=datetime.date.today(),
+            key="p_dob",
+        )
+        age = calculate_age(dob)
+        st.info(f"**Calculated Age:** {age} years old")
+    with col_sex:
+        sex = st.radio("Sex*", ["Male", "Female", "Other"], key="p_sex")
+
+    # DOUBLE ENTRY CHECK
+    assessment_year = assessment_date.year
+    is_duplicate, prev_date = check_annual_duplicate(first_name, last_name, dob, assessment_year)
+
+    if is_duplicate:
+        st.markdown(
+            f"""
+            <div class="flag-red-card">
+                <h4>🔴 FLAGGED AS DOUBLE ENTRY (ANNUAL LIMIT EXCEEDED)</h4>
+                <p>
+                    <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) has already been assessed on 
+                    <strong>{prev_date}</strong> for calendar year <strong>{assessment_year}</strong>.<br>
+                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per calendar year</u>.</em>
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("**2. Body Measurements & Auto-Calculations**")
+    col_w, col_h = st.columns(2)
+    with col_w:
+        weight = st.number_input("Timbang / Weight (kg)*", min_value=0.0, max_value=300.0, step=0.5, key="p_weight")
+    with col_h:
+        height = st.number_input("Taas / Height (cm)*", min_value=0.0, max_value=250.0, step=0.5, key="p_height")
+
+    bmi = calculate_bmi(weight, height) if weight > 0 and height > 0 else 0.0
+    bmi_cat = classify_bmi(bmi) if bmi > 0 else "N/A"
+    st.success(f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}")
+
+    waist = st.number_input("Waist Circumference (cm)*", min_value=0.0, max_value=200.0, step=0.5, key="p_waist")
+    waist_risk = classify_waist(sex, waist) if waist > 0 else "N/A"
+    st.info(f"**Waist Risk Status:** {waist_risk}")
+
+    st.markdown("**3. Medical History & Medications (Philippine Primary Care Standards)**")
+    col_diab, col_htn = st.columns(2)
+
+    with col_diab:
+        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
+        diabetes_meds_selected = []
+        if has_diabetes == "Meron":
+            diabetes_meds_selected = st.multiselect(
+                "Ano ang iniinom mong gamot para sa Diabetes?",
+                options=DIABETES_MEDICATIONS,
+                default=["Metformin (500mg/850mg)"],
+                key="p_diab_meds_multi",
             )
-            age = calculate_age(dob)
-            st.info(f"**Calculated Age:** {age} years old")
-        with col_sex:
-            sex = st.radio("Sex*", ["Male", "Female", "Other"])
+        diabetes_meds_str = ", ".join(diabetes_meds_selected) if diabetes_meds_selected else "None"
 
-        st.write("**2. Body Measurements & Auto-Calculations**")
-        col_w, col_h = st.columns(2)
-        with col_w:
-            weight = st.number_input("Timbang / Weight (kg)*", min_value=1.0, max_value=300.0, step=0.5)
-        with col_h:
-            height = st.number_input("Taas / Height (cm)*", min_value=30.0, max_value=250.0, step=0.5)
+    with col_htn:
+        has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"], key="p_htn")
+        htn_meds_selected = []
+        if has_htn == "Meron":
+            htn_meds_selected = st.multiselect(
+                "Ano ang iniinom mong gamot para sa Hypertension?",
+                options=HYPERTENSION_MEDICATIONS,
+                default=["Amlodipine (5mg/10mg)"],
+                key="p_htn_meds_multi",
+            )
+        htn_meds_str = ", ".join(htn_meds_selected) if htn_meds_selected else "None"
 
-        bmi = calculate_bmi(weight, height)
-        bmi_cat = classify_bmi(bmi)
-        st.success(f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}")
+    cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"], key="p_chol")
 
-        waist = st.number_input("Waist Circumference (cm)*", min_value=20.0, max_value=200.0, step=0.5)
-        waist_risk = classify_waist(sex, waist)
-        st.info(f"**Waist Risk Status:** {waist_risk}")
+    st.write("Na-diagnose na po ba kamo hinin mga sakit?")
+    cvd_stroke = st.checkbox("History of CVD (Stroke)", key="p_stroke")
+    heart_attack = st.checkbox("History of Heart attack (Naatake sa puso)", key="p_heart")
+    kidney_prob = st.checkbox("Chronic Kidney Problem (Dialysis patient)", key="p_kidney")
 
-        st.write("**3. Medical History**")
-        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"])
-        diabetes_meds = st.selectbox(
-            "Ano ang iniinom mong gamot para sa Diabetes?",
-            ["None", "Metformin 500mg tab", "Gliclazide 80mg tab", "Insulin Injection", "Other"]
-        )
+    fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"], key="p_fam")
 
-        has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"])
-        htn_meds = st.selectbox(
-            "Ano ang iniinom mong gamot para sa Hypertension?",
-            ["None", "Amlodipine 5mg/10mg tab", "Losartan 50mg tab", "Telmisartan 40mg tab", "Captopril 25mg tab", "Other"]
-        )
+    st.markdown("**4. Blood Pressure Screening**")
+    bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*", key="p_bp1")
 
-        cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"])
+    systolic = 120
+    if bp1 and "/" in bp1:
+        try:
+            systolic = int(bp1.split("/")[0])
+        except ValueError:
+            pass
 
-        st.write("Na-diagnose na po ba kamo hinin mga sakit? (High Risk Referral):")
-        cvd_stroke = st.checkbox("History of CVD (Stroke)")
-        heart_attack = st.checkbox("History of Heart attack (Naatake sa puso)")
-        kidney_prob = st.checkbox("Chronic Kidney Problem (Dialysis patient)")
+    bp2, bp3, bp_avg = "", "", bp1
+    if systolic >= 140:
+        st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
+        bp2 = st.text_input("Pangalawang Blood Pressure (optional)", key="p_bp2")
+        bp3 = st.text_input("Pangatlong Blood Pressure (optional)", key="p_bp3")
 
-        fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"])
+    st.markdown("**5. Lifestyle & Risk Stratification**")
+    smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"], key="p_smoke")
+    drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"], key="p_drink")
+    exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"], key="p_exer")
+    healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"], key="p_diet")
 
-        st.write("**4. Blood Pressure Screening**")
-        bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*")
+    risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
+    st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
 
-        systolic = 120
-        if bp1 and "/" in bp1:
-            try:
-                systolic = int(bp1.split("/")[0])
-            except ValueError:
-                pass
+    action = st.selectbox(
+        "Ano ang ginawa? / Action Taken*",
+        [
+            "-- Pumili ng Aksyon --",
+            "Advise sa diet at lifestyle (Counselling)",
+            "Ni-refer kay midwife para sa kumpletong assessment",
+            "Ni-refer sa RHU Physician",
+            "Urgent referral sa Ospital / Physician",
+            "Nirefer sa RHU/Ospital pero tumanggi",
+        ],
+        key="p_action",
+    )
 
-        bp2, bp3, bp_avg = "", "", bp1
-        if systolic >= 140:
-            st.warning("BP is ≥ 140/90. Rest for 15 minutes and retake twice.")
-            bp2 = st.text_input("Pangalawang Blood Pressure (optional)")
-            bp3 = st.text_input("Pangatlong Blood Pressure (optional)")
+    required_checks = [
+        bool(last_name.strip()),
+        bool(first_name.strip()),
+        bool(zone.strip()),
+        weight > 0,
+        height > 0,
+        waist > 0,
+        bool(bp1.strip()),
+        action != "-- Pumili ng Aksyon --",
+    ]
 
-        st.write("**5. Lifestyle & Risk Stratification**")
-        smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"])
-        drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"])
-        exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"])
-        healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"])
+    completed_fields = sum(required_checks)
+    total_required = len(required_checks)
+    progress_pct = int((completed_fields / total_required) * 100)
 
-        risk_level, risk_pct = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
-        st.markdown(f"#### **WHO/ISH Risk Level:** {risk_level} Risk ({risk_pct})")
+    with progress_container:
+        st.markdown(f"### 📋 **Form Filling Progress:** `{completed_fields}/{total_required} Required Fields ({progress_pct}%)`")
+        st.progress(progress_pct / 100)
+        st.markdown("---")
 
-        action = st.selectbox(
-            "Ano ang ginawa? / Action Taken*",
-            [
-                "Advise sa diet at lifestyle",
-                "Ni-refer kay midwife para sa kumpletong assessment",
-                "Ni-refer sa RHU",
-                "Nirefer sa ospital",
-                "Nirefer sa RHU/Ospital pero tumanggi",
-            ],
-        )
-
-        bhw_name = st.text_input("Pangalan ng BHW na nag-assess*")
-
-        submit_assessment = st.form_submit_button("Save Assessment Record")
-
-        if submit_assessment:
+    if st.button("Save Assessment Record"):
+        if is_duplicate:
+            st.error(f"⛔ CANNOT SAVE RECORD: {first_name} {last_name} has already been assessed for {assessment_year}!")
+        elif completed_fields < total_required:
+            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) bago i-save!")
+        else:
             conn = sqlite3.connect("philpen_palo.db")
             c = conn.cursor()
             c.execute(
@@ -382,101 +710,148 @@ elif menu == "📋 PhilPEN Risk Assessment":
                     waist_risk, has_diabetes, diabetes_meds, has_hypertension, hypertension_meds,
                     high_cholesterol, history_cvd_stroke, history_heart_attack, history_kidney,
                     family_history, bp_1, bp_2, bp_3, bp_avg, is_smoker, is_binge_drinker,
-                    is_exercising, eats_healthy, risk_level, action_taken, bhw_name
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    is_exercising, eats_healthy, risk_level, action_taken
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
                 (
-                    str(assessment_date), last_name, first_name, middle_name, zone,
-                    st.session_state["user_brgy"], str(dob), age, sex, weight, height,
-                    bmi, bmi_cat, waist, waist_risk, has_diabetes, diabetes_meds,
-                    has_htn, htn_meds, cholesterol, int(cvd_stroke), int(heart_attack),
-                    int(kidney_prob), fam_history, bp1, bp2, bp3, bp_avg, smoker,
-                    drinker, exercise, healthy_diet, risk_level, action, bhw_name
+                    str(assessment_date),
+                    last_name,
+                    first_name,
+                    middle_name,
+                    zone,
+                    st.session_state["user_brgy"],
+                    str(dob),
+                    age,
+                    sex,
+                    weight,
+                    height,
+                    bmi,
+                    bmi_cat,
+                    waist,
+                    waist_risk,
+                    has_diabetes,
+                    diabetes_meds_str,
+                    has_htn,
+                    htn_meds_str,
+                    cholesterol,
+                    int(cvd_stroke),
+                    int(heart_attack),
+                    int(kidney_prob),
+                    fam_history,
+                    bp1,
+                    bp2,
+                    bp3,
+                    bp_avg,
+                    smoker,
+                    drinker,
+                    exercise,
+                    healthy_diet,
+                    risk_level,
+                    action,
                 ),
             )
             conn.commit()
             conn.close()
-            st.success("Assessment record successfully saved!")
+            st.success("Record successfully saved to the barangay database!")
 
 # ---------------------------------------------------------
-# MODULE 3: PHILPEN DATA ANALYTICS & REPORTS
+# MODULE 3: DATABASE & ANALYTICS
 # ---------------------------------------------------------
-elif menu == "📈 PhilPEN Data Analytics":
-    st.subheader(f"PhilPEN Analytics & Health Indicators — Brgy. {st.session_state['user_brgy']}")
+elif nav_program == "Barangay Database & Analytics":
+    st.subheader(f"PhilPEN Database & Statistical Reports — Barangay {st.session_state['user_brgy']}")
 
-    conn = sqlite3.connect("philpen_palo.db")
-    df = pd.read_sql_query("SELECT * FROM assessments WHERE barangay = ?", conn, params=(st.session_state["user_brgy"],))
-    conn.close()
+    tab_view, tab_analytics, tab_edit = st.tabs(
+        ["📋 View Master Records", "📊 Detailed Analytics & Reports", "✏️ Edit Resident Record"]
+    )
 
-    if df.empty:
-        st.warning("No PhilPEN assessment records found for this barangay yet.")
-    else:
-        # Filtered Datasets
-        adults_df = df[(df["age"] >= 20) & (df["age"] <= 64)]
-        seniors_df = df[df["age"] >= 65]
-        rhu_referred_df = df[df["action_taken"].str.contains("RHU", case=False, na=False)]
-        diabetic_df = df[df["has_diabetes"] == "Meron"]
-        hypertensive_df = df[df["has_hypertension"] == "Meron"]
-
-        # Metric Overview Cards
-        col_a, col_b, col_c, col_d, col_e = st.columns(5)
-        col_a.metric("Assessed Adults (20-64)", len(adults_df))
-        col_b.metric("Assessed Seniors (65+)", len(seniors_df))
-        col_c.metric("RHU Referrals", len(rhu_referred_df))
-        col_d.metric("Diabetic Patients", len(diabetic_df))
-        col_e.metric("Hypertensive Patients", len(hypertensive_df))
-
-        st.markdown("---")
-
-        # Tabs for Requested Specific Lists
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "📋 Masterlist (All Assessed)",
-            "🏥 RHU Referrals",
-            "🩸 Diabetic Patients",
-            "🫀 Hypertensive Patients"
-        ])
-
-        with tab1:
-            st.write(f"**Complete List of Assessed Individuals ({len(df)} total)**")
+    with tab_view:
+        if not df.empty:
             st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label=f"Export CSV ({st.session_state['user_brgy']})",
+                data=csv,
+                file_name=f"PhilPEN_Records_{st.session_state['user_brgy']}.csv",
+                mime="text/csv",
+            )
+        else:
+            st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
 
-        with tab2:
-            st.write(f"**List of Patients Referred to RHU ({len(rhu_referred_df)} total)**")
-            if not rhu_referred_df.empty:
-                display_cols = ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "has_diabetes", "has_hypertension", "action_taken", "bhw_name"]
-                st.dataframe(rhu_referred_df[display_cols], use_container_width=True)
-            else:
-                st.info("No patients currently referred to RHU.")
+    with tab_analytics:
+        if df.empty:
+            st.info("No assessment records found to analyze.")
+        else:
+            adults_20_64 = df[(df["age"] >= 20) & (df["age"] <= 64)]
+            seniors_65_plus = df[df["age"] >= 65]
+            rhu_referred = df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)]
+            diabetic_patients = df[df["has_diabetes"] == "Meron"]
+            hypertensive_patients = df[df["has_hypertension"] == "Meron"]
 
-        with tab3:
-            st.write(f"**List of Diabetic Patients ({len(diabetic_df)} total)**")
-            if not diabetic_df.empty:
-                display_cols = ["id", "last_name", "first_name", "age", "sex", "zone", "diabetes_meds", "risk_level", "bhw_name"]
-                st.dataframe(diabetic_df[display_cols], use_container_width=True)
-            else:
-                st.info("No diabetic patients registered.")
+            st.markdown("#### **1. Age & Sex Breakdown Table**")
+            bins = [0, 19, 30, 45, 64, 120]
+            labels = ["< 20 yrs", "20-29 yrs", "30-44 yrs", "45-64 yrs", "65+ yrs"]
+            df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+            age_sex_dist = pd.crosstab(df["age_group"], df["sex"], margins=True, margins_name="Total")
+            st.dataframe(age_sex_dist, use_container_width=True)
 
-        with tab4:
-            st.write(f"**List of Hypertensive Patients ({len(hypertensive_df)} total)**")
-            if not hypertensive_df.empty:
-                display_cols = ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "hypertension_meds", "risk_level", "bhw_name"]
-                st.dataframe(hypertensive_df[display_cols], use_container_width=True)
-            else:
-                st.info("No hypertensive patients registered.")
+            st.markdown("---")
+            st.markdown(f"#### **2 & 3. Key Demographic Cohorts**")
+            col_ad, col_sr = st.columns(2)
+            with col_ad:
+                st.markdown(f"**Adults Assessed (20 - 64 years old):** `{len(adults_20_64)}`")
+                if not adults_20_64.empty:
+                    st.dataframe(adults_20_64[["id", "last_name", "first_name", "age", "sex", "risk_level"]], use_container_width=True)
+            with col_sr:
+                st.markdown(f"**Older Adults Assessed (65+ years old):** `{len(seniors_65_plus)}`")
+                if not seniors_65_plus.empty:
+                    st.dataframe(seniors_65_plus[["id", "last_name", "first_name", "age", "sex", "risk_level"]], use_container_width=True)
 
-        # CSV Download Section
-        st.markdown("---")
-        csv_data = df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label=f"📥 Download Full Analytics Export (CSV)",
-            data=csv_data,
-            file_name=f"PhilPEN_Analytics_Brgy_{st.session_state['user_brgy']}.csv",
-            mime="text/csv",
-        )
+            st.markdown("---")
+            st.markdown(f"#### **4. Diabetic Patients Master List (`{len(diabetic_patients)}`)**")
+            if not diabetic_patients.empty:
+                st.dataframe(diabetic_patients[["id", "last_name", "first_name", "age", "diabetes_meds", "risk_level"]], use_container_width=True)
 
-# ---------------------------------------------------------
-# FUTURE MODULE PLACEHOLDERS
-# ---------------------------------------------------------
+            st.markdown(f"#### **5. Hypertensive Patients Master List (`{len(hypertensive_patients)}`)**")
+            if not hypertensive_patients.empty:
+                st.dataframe(hypertensive_patients[["id", "last_name", "first_name", "age", "bp_1", "hypertension_meds", "risk_level"]], use_container_width=True)
+
+    with tab_edit:
+        if df.empty:
+            st.info("No records available to edit.")
+        else:
+            resident_options = {
+                f"ID {row['id']}: {row['last_name']}, {row['first_name']} ({row['assessment_date']})": row["id"]
+                for _, row in df.iterrows()
+            }
+            selected_label = st.selectbox("Select Resident to Update:", list(resident_options.keys()))
+            record_id = resident_options[selected_label]
+            selected_row = df[df["id"] == record_id].iloc[0]
+
+            with st.form("edit_resident_form"):
+                e_lname = st.text_input("Last Name", value=selected_row["last_name"])
+                e_fname = st.text_input("First Name", value=selected_row["first_name"])
+                e_weight = st.number_input("Weight (kg)", value=float(selected_row["weight_kg"]), step=0.5)
+                e_height = st.number_input("Height (cm)", value=float(selected_row["height_cm"]), step=0.5)
+                e_action = st.text_input("Action Taken", value=selected_row["action_taken"])
+
+                if st.form_submit_button("Update Resident Record"):
+                    new_bmi = calculate_bmi(e_weight, e_height)
+                    new_bmi_cat = classify_bmi(new_bmi)
+
+                    conn = sqlite3.connect("philpen_palo.db")
+                    c = conn.cursor()
+                    c.execute(
+                        """
+                        UPDATE assessments SET last_name=?, first_name=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?, action_taken=?
+                        WHERE id=?
+                    """,
+                        (e_lname, e_fname, e_weight, e_height, new_bmi, new_bmi_cat, e_action, record_id),
+                    )
+                    conn.commit()
+                    conn.close()
+                    st.success("Record updated successfully!")
+                    st.rerun()
+
 else:
-    st.subheader(menu)
-    st.info("💡 This program module is scheduled for future deployment. Assessment and recording interfaces will be activated soon.")
+    st.subheader(f"{nav_program} Module")
+    st.info(f"The **{nav_program}** module is scheduled for data integration.")
