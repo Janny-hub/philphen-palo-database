@@ -477,9 +477,9 @@ st.sidebar.markdown(
         👨‍⚕️ <strong>Lead Developer:</strong><br>
         <span style="color: #f8fafc; font-weight: 600;">Jan Art A. Serna, RMT</span><br><br>
         🎓 <strong>Capstone Project Proposed by:</strong><br>
-        <span style="color: #f8fafc; font-weight: 600;">Lesterel C. Kidit, RM</span><br>
-        <span style="color: #f8fafc; font-weight: 600;">Nova Nizza B. Dacayanan, RN</span><br>
-        <span style="color: #f8fafc; font-weight: 600;">James O. Peconcillo, MD</span><br>
+        <span style="color: #f8fafc; font-weight: 600;">Lesterel C. Kidit, RM, RN, MD</span><br>
+        <span style="color: #f8fafc; font-weight: 600;">Nova Nizza B. Dacayanan, RM, RN, MD</span><br>
+        <span style="color: #f8fafc; font-weight: 600;">James O. Peconcillo, RM, RN, MD</span><br>
         <span style="color: #818cf8; font-size: 0.8rem;">University of the Philippines-Manila SHS Interns</span>
     </div>
     """,
