@@ -1,4 +1,28 @@
- weight_kg REAL,
+import datetime
+import sqlite3
+import pandas as pd
+import streamlit as st
+
+# ---------------------------------------------------------
+# DATABASE SETUP
+# ---------------------------------------------------------
+def init_db():
+    conn = sqlite3.connect("philpen_palo.db")
+    c = conn.cursor()
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS assessments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assessment_date TEXT,
+            last_name TEXT,
+            first_name TEXT,
+            middle_name TEXT,
+            zone TEXT,
+            barangay TEXT,
+            birthday TEXT,
+            age INTEGER,
+            sex TEXT,
+            weight_kg REAL,
             height_cm REAL,
             bmi REAL,
             bmi_class TEXT,
@@ -22,8 +46,7 @@
             is_exercising TEXT,
             eats_healthy TEXT,
             risk_level TEXT,
-            action_taken TEXT,
-            bhw_name TEXT
+            action_taken TEXT
         )
     """
     )
@@ -34,43 +57,43 @@
 init_db()
 
 # ---------------------------------------------------------
-# CONSTANTS & LISTS
+# BARANGAY CREDENTIALS (Username: Password)
 # ---------------------------------------------------------
-BARANGAYS = [
-    "Anahaway",
-    "Arado",
-    "Baras",
-    "Barayong",
-    "Cabarasan Daku",
-    "Cabarasan Guti",
-    "Campetic",
-    "Candahug",
-    "Cangumbang",
-    "Canhidoc",
-    "Capirawan",
-    "Castilla",
-    "Cogon",
-    "San Joaquin",
-    "Gacao",
-    "Guindapunan",
-    "Libertad",
-    "Naga-naga",
-    "Pawing",
-    "Buri (Poblacion barangay)",
-    "Cavite East (Pob. barangay)",
-    "Cavite West (Poblacion)",
-    "Luntad (Poblacion)",
-    "Santa Cruz (Poblacion)",
-    "Salvacion",
-    "San Agustin",
-    "San Antonio",
-    "San Isidro",
-    "San Jose",
-    "St. Michael (Poblacion)",
-    "Tacuranga",
-    "Teraza",
-    "San Fernando",
-]
+BARANGAY_CREDENTIALS = {
+    "Anahaway": "anah123",
+    "Arado": "arad123",
+    "Baras": "bara123",
+    "Barayong": "bary123",
+    "Cabarasan Daku": "cabd123",
+    "Cabarasan Guti": "cabg123",
+    "Campetic": "camp123",
+    "Candahug": "cand123",
+    "Cangumbang": "cang123",
+    "Canhidoc": "canh123",
+    "Capirawan": "capi123",
+    "Castilla": "cast123",
+    "Cogon": "cogo123",
+    "San Joaquin": "joaq123",
+    "Gacao": "gaca123",
+    "Guindapunan": "guin123",
+    "Libertad": "libe123",
+    "Naga-naga": "naga123",
+    "Pawing": "pawi123",
+    "Buri (Poblacion barangay)": "buri123",
+    "Cavite East (Pob. barangay)": "cave123",
+    "Cavite West (Poblacion)": "cavw123",
+    "Luntad (Poblacion)": "lunt123",
+    "Santa Cruz (Poblacion)": "sant123",
+    "Salvacion": "salv123",
+    "San Agustin": "agust123",
+    "San Antonio": "anto123",
+    "San Isidro": "isid123",
+    "San Jose": "jose123",
+    "St. Michael (Poblacion)": "mich123",
+    "Tacuranga": "tacu123",
+    "Teraza": "tera123",
+    "San Fernando": "fern123",
+}
 
 # ---------------------------------------------------------
 # COMPUTATION HELPER FUNCTIONS
@@ -108,7 +131,6 @@ def classify_waist(sex, waist):
 
 
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
-    # Simplified WHO Non-Laboratory Risk Matrix
     if diabetes == "Meron" or sbp >= 160 or bmi >= 25.0:
         if age >= 60 or sbp >= 160:
             return "High", "20% to <30%", "Red"
@@ -119,67 +141,107 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 # ---------------------------------------------------------
-# AUTHENTICATION & BARANGAY LOCK
+# STREAMLIT CONFIG & CUSTOM STYLING
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="PhilPEN Risk Assessment - Palo Leyte", layout="wide"
 )
 
+# Custom CSS for Background and Header
+st.markdown(
+    """
+    <style>
+    /* Main App Background - Light Gray */
+    .stApp {
+        background-color: #f4f6f8;
+    }
+    
+    /* Header Container - Red & Yellow Banner */
+    .header-container {
+        background: linear-gradient(90deg, #d90429 0%, #ffb703 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    }
+    .header-container h1 {
+        color: #ffffff !important;
+        margin: 0;
+        font-weight: 700;
+    }
+    .header-container p {
+        color: #fff3bf;
+        margin: 5px 0 0 0;
+        font-size: 1.1rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Display Custom Red/Yellow Banner
+st.markdown(
+    """
+    <div class="header-container">
+        <h1>PhilPEN Risk Assessment System</h1>
+        <p>Municipality of Palo, Leyte — Health Information Database</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------
+# AUTHENTICATION
+# ---------------------------------------------------------
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
     st.session_state["user_brgy"] = ""
-    st.session_state["bhw_name"] = ""
 
 if not st.session_state["authenticated"]:
-    st.title("PhilPEN Risk Assessment Portal")
-    st.subheader("Palo, Leyte - Health Worker Login")
+    st.subheader("Barangay Portal Login")
 
     with st.form("login_form"):
-        brgy = st.selectbox("Select Your Barangay", BARANGAYS)
-        bhw = st.text_input("BHW Full Name")
-        pin = st.text_input("Barangay Security Code / PIN", type="password")
-        submit = st.form_submit_button("Access Portal")
+        username = st.selectbox("Barangay Name (Username)", list(BARANGAY_CREDENTIALS.keys()))
+        password = st.text_input("Barangay Password", type="password")
+        submit = st.form_submit_button("Login")
 
         if submit:
-            if pin == "1234":  # Replace with actual PIN verification
+            if BARANGAY_CREDENTIALS.get(username) == password:
                 st.session_state["authenticated"] = True
-                st.session_state["user_brgy"] = brgy
-                st.session_state["bhw_name"] = bhw
+                st.session_state["user_brgy"] = username
                 st.rerun()
             else:
-                st.error("Invalid Security Code")
+                st.error("Incorrect password for the selected Barangay.")
     st.stop()
 
 # ---------------------------------------------------------
 # MAIN APP INTERFACE
 # ---------------------------------------------------------
-st.sidebar.title(f"📍 {st.session_state['user_brgy']}")
-st.sidebar.write(f"**BHW:** {st.session_state['bhw_name']}")
+st.sidebar.title(f"📍 Barangay {st.session_state['user_brgy']}")
 if st.sidebar.button("Logout"):
     st.session_state["authenticated"] = False
+    st.session_state["user_brgy"] = ""
     st.rerun()
 
-menu = st.sidebar.radio("Navigation", ["New Assessment", "Barangay Database"])
+menu = st.sidebar.radio("Navigation", ["New Assessment Form", "Barangay Database"])
 
-if menu == "New Assessment":
-    st.title("PhilPEN Health Risk Assessment Form")
+if menu == "New Assessment Form":
+    st.subheader(f"New Assessment Record — {st.session_state['user_brgy']}")
 
     with st.form("assessment_form"):
-        st.subheader("1. General Information")
+        st.write("**1. General Information**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            assessment_date = st.date_input(
-                "Date of Assessment", datetime.date.today()
-            )
+            assessment_date = st.date_input("Date of Assessment*", datetime.date.today())
             last_name = st.text_input("Apilido (Last Name)*")
         with col2:
             first_name = st.text_input("Pangalan (Given Name)*")
             middle_name = st.text_input("Gitnang Pangalan (Middle Name)")
         with col3:
             zone = st.text_input("Zone / Purok*")
-            barangay = st.text_input(
-                "Barangay", value=st.session_state["user_brgy"], disabled=True
-            )
+            barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
 
         col_dob, col_sex = st.columns(2)
         with col_dob:
@@ -193,56 +255,38 @@ if menu == "New Assessment":
         with col_sex:
             sex = st.radio("Sex*", ["Male", "Female", "Other"])
 
-        st.subheader("2. Body Measurements & Auto-Calculations")
+        st.write("**2. Body Measurements & Auto-Calculations**")
         col_w, col_h = st.columns(2)
         with col_w:
-            weight = st.number_input(
-                "Timbang / Weight (kg)*", min_value=1.0, max_value=300.0, step=0.5
-            )
+            weight = st.number_input("Timbang / Weight (kg)*", min_value=1.0, max_value=300.0, step=0.5)
         with col_h:
-            height = st.number_input(
-                "Taas / Height (cm)*", min_value=30.0, max_value=250.0, step=0.5
-            )
+            height = st.number_input("Taas / Height (cm)*", min_value=30.0, max_value=250.0, step=0.5)
 
         bmi = calculate_bmi(weight, height)
         bmi_cat = classify_bmi(bmi)
-        st.success(
-            f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}"
-        )
+        st.success(f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}")
 
-        waist = st.number_input(
-            "Waist Circumference (cm)*", min_value=20.0, max_value=200.0, step=0.5
-        )
+        waist = st.number_input("Waist Circumference (cm)*", min_value=20.0, max_value=200.0, step=0.5)
         waist_risk = classify_waist(sex, waist)
         st.info(f"**Waist Risk Status:** {waist_risk}")
 
-        st.subheader("3. Medical History")
-        has_diabetes = st.selectbox(
-            "May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"]
-        )
+        st.write("**3. Medical History**")
+        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"])
         diabetes_meds = st.text_input("Ano ang iniinom mong gamot para sa Diabetes?")
 
-        has_htn = st.selectbox(
-            "May ada ka ba High blood / Hypertension?*",
-            ["Wala", "Meron", "Diri ak maaram"],
-        )
+        has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"])
         htn_meds = st.text_input("Ano ang iniinom mong gamot para sa Hypertension?")
 
-        cholesterol = st.selectbox(
-            "Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"]
-        )
+        cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"])
 
-        st.write("**Na-diagnose na po ba kamo hinin mga sakit?**")
+        st.write("Na-diagnose na po ba kamo hinin mga sakit?")
         cvd_stroke = st.checkbox("History of CVD (Stroke)")
         heart_attack = st.checkbox("History of Heart attack (Naatake sa puso)")
         kidney_prob = st.checkbox("Chronic Kidney Problem (Dialysis patient)")
 
-        fam_history = st.selectbox(
-            "Family History: May ada ba inatake ha puso o na-stroke?",
-            ["Wala", "Meron"],
-        )
+        fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"])
 
-        st.subheader("4. Blood Pressure Screening")
+        st.write("**4. Blood Pressure Screening**")
         bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*")
 
         systolic = 120
@@ -252,37 +296,27 @@ if menu == "New Assessment":
             except ValueError:
                 pass
 
-        bp2 = ""
-        bp3 = ""
-        bp_avg = bp1
+        bp2, bp3, bp_avg = "", "", bp1
         if systolic >= 140:
             st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
             bp2 = st.text_input("Pangalawang Blood Pressure (optional)")
             bp3 = st.text_input("Pangatlong Blood Pressure (optional)")
             if bp2 and bp3 and "/" in bp2 and "/" in bp3:
                 try:
-                    s2, d2 = map(int, bp2.split("/"))
-                    s3, d3 = map(int, bp3.split("/"))
-                    bp_avg = f"{(s2+s3)//2}/{(d2+d3)//2}"
+                    s2, _ = map(int, bp2.split("/"))
+                    s3, _ = map(int, bp3.split("/"))
+                    bp_avg = f"{(s2+s3)//2}"
                 except ValueError:
                     pass
 
-        st.subheader("5. Lifestyle & Risk Stratification")
+        st.write("**5. Lifestyle & Risk Stratification**")
         smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"])
         drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"])
-        exercise = st.radio(
-            "Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"]
-        )
-        healthy_diet = st.radio(
-            "Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"]
-        )
+        exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"])
+        healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"])
 
-        risk_level, risk_pct, risk_color = calculate_cvd_risk(
-            age, sex, smoker, systolic, bmi, has_diabetes
-        )
-        st.markdown(
-            f"### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**"
-        )
+        risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
+        st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
 
         action = st.selectbox(
             "Ano ang ginawa? / Action Taken*",
@@ -308,8 +342,8 @@ if menu == "New Assessment":
                     waist_risk, has_diabetes, diabetes_meds, has_hypertension, hypertension_meds,
                     high_cholesterol, history_cvd_stroke, history_heart_attack, history_kidney,
                     family_history, bp_1, bp_2, bp_3, bp_avg, is_smoker, is_binge_drinker,
-                    is_exercising, eats_healthy, risk_level, action_taken, bhw_name
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    is_exercising, eats_healthy, risk_level, action_taken
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
                 (
                     str(assessment_date),
@@ -346,15 +380,16 @@ if menu == "New Assessment":
                     healthy_diet,
                     risk_level,
                     action,
-                    st.session_state["bhw_name"],
                 ),
             )
             conn.commit()
             conn.close()
-            st.success("Record saved successfully to database!")
+            st.success("Record successfully saved to the barangay database!")
 
 elif menu == "Barangay Database":
-    st.title(f"Patient Database - Barangay {st.session_state['user_brgy']}")
+    st.subheader(f"Patient Database — Barangay {st.session_state['user_brgy']}")
+    
+    # ISOLATED DATABASE QUERY
     conn = sqlite3.connect("philpen_palo.db")
     df = pd.read_sql_query(
         "SELECT * FROM assessments WHERE barangay = ?",
@@ -364,13 +399,13 @@ elif menu == "Barangay Database":
     conn.close()
 
     if not df.empty:
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button(
-            "Export Barangay Records (CSV)",
+            label=f"Export CSV ({st.session_state['user_brgy']})",
             data=csv,
-            file_name=f"PhilPEN_{st.session_state['user_brgy']}.csv",
+            file_name=f"PhilPEN_Records_{st.session_state['user_brgy']}.csv",
             mime="text/csv",
         )
     else:
-        st.info("No assessment records found for this Barangay yet.")
+        st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
