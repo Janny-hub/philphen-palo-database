@@ -141,44 +141,67 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & HIGH-CONTRAST STYLING
+# STREAMLIT CONFIG & CUSTOM STYLING (NO DARK GRAY)
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="e-FHSIS: Palo, Leyte", layout="wide"
 )
 
-# Custom High-Contrast CSS: Light Green Inputs, White Background, Black Text
+# Custom Styling: Pure White Canvas, Light Green Inputs, No Dark Gray Date Pickers
 st.markdown(
     """
     <style>
-    /* Main application background to pure white */
+    /* Main Background */
     .stApp, [data-testid="stAppViewContainer"] {
         background-color: #ffffff !important;
         color: #000000 !important;
     }
 
-    /* All body text, labels, headers, and form titles forced to sharp black */
+    /* All Standard Text & Labels */
     p, span, label, h1, h2, h3, h4, h5, h6, .stMarkdown, div[role="radiogroup"] label {
         color: #000000 !important;
         font-weight: 600 !important;
     }
 
-    /* Light Green Entry Boxes (Text inputs, Selectboxes, Number inputs, Date pickers) */
+    /* Entry Boxes (Text, Numbers, Selectbox, Date Inputs) */
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div,
     input, textarea, select {
-        background-color: #e8f5e9 !important; /* Soft light green tint */
+        background-color: #e8f5e9 !important; /* Light green */
         color: #000000 !important;
         border: 1px solid #81c784 !important;
         border-radius: 6px !important;
     }
 
-    /* Dropdown text & option legibility */
-    div[data-baseweb="select"] *, div[role="listbox"] * {
+    /* Remove Dark Gray Calendar / Date Picker Popovers */
+    div[data-baseweb="popover"],
+    div[data-baseweb="calendar"],
+    div[data-baseweb="calendar"] *,
+    ul[role="listbox"],
+    ul[role="listbox"] * {
+        background-color: #f4fbf7 !important;
         color: #000000 !important;
     }
 
-    /* Manila / Light Green Header Banner */
+    div[data-baseweb="calendar"] button:hover {
+        background-color: #c8e6c9 !important;
+    }
+
+    /* Buttons (Login, Logout, Action Buttons) */
+    .stButton > button, button[kind="primary"], button[kind="secondary"] {
+        background-color: #28a745 !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+
+    .stButton > button:hover {
+        background-color: #218838 !important;
+        color: #ffffff !important;
+    }
+
+    /* Header Banner (Light Green Manila Theme) */
     .header-container {
         background-color: #d4edda;
         border: 2px solid #b1dfbb;
@@ -186,7 +209,7 @@ st.markdown(
         padding: 20px;
         border-radius: 6px;
         text-align: center;
-        margin-bottom: 25px;
+        margin-bottom: 20px;
     }
     .header-container h1 {
         color: #155724 !important;
@@ -205,6 +228,11 @@ st.markdown(
     section[data-testid="stSidebar"] {
         background-color: #f8f9fa !important;
         border-right: 1px solid #dee2e6;
+    }
+
+    /* Progress Bar Styling */
+    .stProgress > div > div > div > div {
+        background-color: #28a745 !important;
     }
     </style>
     """,
@@ -247,7 +275,7 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------------------------------------------
-# SIDEBAR NAVIGATION (PROGRAMS MODULE LIST)
+# SIDEBAR NAVIGATION
 # ---------------------------------------------------------
 st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
 
@@ -278,108 +306,135 @@ nav_program = st.sidebar.radio(
 if nav_program == "PhilPEN risk assessment":
     st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
-    with st.form("assessment_form"):
-        st.markdown("**1. General Information**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            assessment_date = st.date_input("Date of Assessment*", datetime.date.today())
-            last_name = st.text_input("Apilido (Last Name)*")
-        with col2:
-            first_name = st.text_input("Pangalan (Given Name)*")
-            middle_name = st.text_input("Gitnang Pangalan (Middle Name)")
-        with col3:
-            zone = st.text_input("Zone / Purok*")
-            barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
+    # Form Fields Interactive Inputs for Dynamic Progress Tracing
+    st.markdown("**1. General Information**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
+        last_name = st.text_input("Apilido (Last Name)*", key="p_lname")
+    with col2:
+        first_name = st.text_input("Pangalan (Given Name)*", key="p_fname")
+        middle_name = st.text_input("Gitnang Pangalan (Middle Name)", key="p_mname")
+    with col3:
+        zone = st.text_input("Zone / Purok*", key="p_zone")
+        barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
 
-        col_dob, col_sex = st.columns(2)
-        with col_dob:
-            dob = st.date_input(
-                "Birthday*",
-                min_value=datetime.date(1920, 1, 1),
-                max_value=datetime.date.today(),
-            )
-            age = calculate_age(dob)
-            st.info(f"**Calculated Age:** {age} years old")
-        with col_sex:
-            sex = st.radio("Sex*", ["Male", "Female", "Other"])
+    col_dob, col_sex = st.columns(2)
+    with col_dob:
+        dob = st.date_input(
+            "Birthday*",
+            min_value=datetime.date(1920, 1, 1),
+            max_value=datetime.date.today(),
+            key="p_dob",
+        )
+        age = calculate_age(dob)
+        st.info(f"**Calculated Age:** {age} years old")
+    with col_sex:
+        sex = st.radio("Sex*", ["Male", "Female", "Other"], key="p_sex")
 
-        st.markdown("**2. Body Measurements & Auto-Calculations**")
-        col_w, col_h = st.columns(2)
-        with col_w:
-            weight = st.number_input("Timbang / Weight (kg)*", min_value=1.0, max_value=300.0, step=0.5)
-        with col_h:
-            height = st.number_input("Taas / Height (cm)*", min_value=30.0, max_value=250.0, step=0.5)
+    st.markdown("**2. Body Measurements & Auto-Calculations**")
+    col_w, col_h = st.columns(2)
+    with col_w:
+        weight = st.number_input("Timbang / Weight (kg)*", min_value=0.0, max_value=300.0, step=0.5, key="p_weight")
+    with col_h:
+        height = st.number_input("Taas / Height (cm)*", min_value=0.0, max_value=250.0, step=0.5, key="p_height")
 
-        bmi = calculate_bmi(weight, height)
-        bmi_cat = classify_bmi(bmi)
-        st.success(f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}")
+    bmi = calculate_bmi(weight, height) if weight > 0 and height > 0 else 0.0
+    bmi_cat = classify_bmi(bmi) if bmi > 0 else "N/A"
+    st.success(f"**Calculated BMI:** {bmi} | **Classification:** {bmi_cat}")
 
-        waist = st.number_input("Waist Circumference (cm)*", min_value=20.0, max_value=200.0, step=0.5)
-        waist_risk = classify_waist(sex, waist)
-        st.info(f"**Waist Risk Status:** {waist_risk}")
+    waist = st.number_input("Waist Circumference (cm)*", min_value=0.0, max_value=200.0, step=0.5, key="p_waist")
+    waist_risk = classify_waist(sex, waist) if waist > 0 else "N/A"
+    st.info(f"**Waist Risk Status:** {waist_risk}")
 
-        st.markdown("**3. Medical History**")
-        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"])
-        diabetes_meds = st.text_input("Ano ang iniinom mong gamot para sa Diabetes?")
+    st.markdown("**3. Medical History**")
+    has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
+    diabetes_meds = st.text_input("Ano ang iniinom mong gamot para sa Diabetes?", key="p_diab_meds")
 
-        has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"])
-        htn_meds = st.text_input("Ano ang iniinom mong gamot para sa Hypertension?")
+    has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"], key="p_htn")
+    htn_meds = st.text_input("Ano ang iniinom mong gamot para sa Hypertension?", key="p_htn_meds")
 
-        cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"])
+    cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"], key="p_chol")
 
-        st.write("Na-diagnose na po ba kamo hinin mga sakit?")
-        cvd_stroke = st.checkbox("History of CVD (Stroke)")
-        heart_attack = st.checkbox("History of Heart attack (Naatake sa puso)")
-        kidney_prob = st.checkbox("Chronic Kidney Problem (Dialysis patient)")
+    st.write("Na-diagnose na po ba kamo hinin mga sakit?")
+    cvd_stroke = st.checkbox("History of CVD (Stroke)", key="p_stroke")
+    heart_attack = st.checkbox("History of Heart attack (Naatake sa puso)", key="p_heart")
+    kidney_prob = st.checkbox("Chronic Kidney Problem (Dialysis patient)", key="p_kidney")
 
-        fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"])
+    fam_history = st.selectbox("Family History: May ada ba inatake ha puso o na-stroke?", ["Wala", "Meron"], key="p_fam")
 
-        st.markdown("**4. Blood Pressure Screening**")
-        bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*")
+    st.markdown("**4. Blood Pressure Screening**")
+    bp1 = st.text_input("Unang Blood Pressure (e.g., 120/80)*", key="p_bp1")
 
-        systolic = 120
-        if bp1 and "/" in bp1:
+    systolic = 120
+    if bp1 and "/" in bp1:
+        try:
+            systolic = int(bp1.split("/")[0])
+        except ValueError:
+            pass
+
+    bp2, bp3, bp_avg = "", "", bp1
+    if systolic >= 140:
+        st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
+        bp2 = st.text_input("Pangalawang Blood Pressure (optional)", key="p_bp2")
+        bp3 = st.text_input("Pangatlong Blood Pressure (optional)", key="p_bp3")
+        if bp2 and bp3 and "/" in bp2 and "/" in bp3:
             try:
-                systolic = int(bp1.split("/")[0])
+                s2, _ = map(int, bp2.split("/"))
+                s3, _ = map(int, bp3.split("/"))
+                bp_avg = f"{(s2+s3)//2}"
             except ValueError:
                 pass
 
-        bp2, bp3, bp_avg = "", "", bp1
-        if systolic >= 140:
-            st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
-            bp2 = st.text_input("Pangalawang Blood Pressure (optional)")
-            bp3 = st.text_input("Pangatlong Blood Pressure (optional)")
-            if bp2 and bp3 and "/" in bp2 and "/" in bp3:
-                try:
-                    s2, _ = map(int, bp2.split("/"))
-                    s3, _ = map(int, bp3.split("/"))
-                    bp_avg = f"{(s2+s3)//2}"
-                except ValueError:
-                    pass
+    st.markdown("**5. Lifestyle & Risk Stratification**")
+    smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"], key="p_smoke")
+    drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"], key="p_drink")
+    exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"], key="p_exer")
+    healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"], key="p_diet")
 
-        st.markdown("**5. Lifestyle & Risk Stratification**")
-        smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"])
-        drinker = st.radio("Ikaw ba ay binge drinker?*", ["Hindi", "Oo"])
-        exercise = st.radio("Nakakapag-ehersisyo ka ba 150 mins/week?*", ["Oo", "Hindi"])
-        healthy_diet = st.radio("Nakakakain ng 5 platitong gulay/prutas araw-araw?*", ["Oo", "Hindi"])
+    risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
+    st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
 
-        risk_level, risk_pct, risk_color = calculate_cvd_risk(age, sex, smoker, systolic, bmi, has_diabetes)
-        st.markdown(f"#### **WHO/ISH Risk Assessment: {risk_level} Risk ({risk_pct})**")
+    action = st.selectbox(
+        "Ano ang ginawa? / Action Taken*",
+        [
+            "-- Pumili ng Aksyon --",
+            "Advise sa diet at lifestyle (Counselling)",
+            "Ni-refer kay midwife para sa kumpletong assessment",
+            "Ni-refer sa RHU Physician",
+            "Urgent referral sa Ospital / Physician",
+            "Nirefer sa RHU/Ospital pero tumanggi",
+        ],
+        key="p_action",
+    )
 
-        action = st.selectbox(
-            "Ano ang ginawa? / Action Taken*",
-            [
-                "Advise sa diet at lifestyle (Counselling)",
-                "Ni-refer kay midwife para sa kumpletong assessment",
-                "Ni-refer sa RHU Physician",
-                "Urgent referral sa Ospital / Physician",
-                "Nirefer sa RHU/Ospital pero tumanggi",
-            ],
-        )
+    # ---------------------------------------------------------
+    # DYNAMIC PROGRESS TRACER
+    # ---------------------------------------------------------
+    required_checks = [
+        bool(last_name.strip()),
+        bool(first_name.strip()),
+        bool(zone.strip()),
+        weight > 0,
+        height > 0,
+        waist > 0,
+        bool(bp1.strip()),
+        action != "-- Pumili ng Aksyon --",
+    ]
 
-        submit_assessment = st.form_submit_button("Save Assessment Record")
+    completed_fields = sum(required_checks)
+    total_required = len(required_checks)
+    progress_percentage = int((completed_fields / total_required) * 100)
 
-        if submit_assessment:
+    st.markdown("---")
+    st.markdown(f"**Form Completion Progress:** `{completed_fields}/{total_required} Required Fields ({progress_percentage}%)`")
+    st.progress(progress_percentage / 100)
+
+    # Save Record Button
+    if st.button("Save Assessment Record"):
+        if completed_fields < total_required:
+            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) bago i-save!")
+        else:
             conn = sqlite3.connect("philpen_palo.db")
             c = conn.cursor()
             c.execute(
