@@ -1,28 +1,4 @@
-import datetime
-import sqlite3
-import pandas as pd
-import streamlit as st
-
-# ---------------------------------------------------------
-# DATABASE SETUP
-# ---------------------------------------------------------
-def init_db():
-    conn = sqlite3.connect("philpen_palo.db")
-    c = conn.cursor()
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS assessments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            assessment_date TEXT,
-            last_name TEXT,
-            first_name TEXT,
-            middle_name TEXT,
-            zone TEXT,
-            barangay TEXT,
-            birthday TEXT,
-            age INTEGER,
-            sex TEXT,
-            weight_kg REAL,
+ weight_kg REAL,
             height_cm REAL,
             bmi REAL,
             bmi_class TEXT,
