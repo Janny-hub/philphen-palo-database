@@ -147,20 +147,35 @@ st.set_page_config(
     page_title="e-FHSIS: Palo, Leyte", layout="wide"
 )
 
-# Custom High-Contrast CSS: Light Green Header, White Background, Black Text
+# Custom High-Contrast CSS: Light Green Inputs, White Background, Black Text
 st.markdown(
     """
     <style>
-    /* Force main application background to pure white */
+    /* Main application background to pure white */
     .stApp, [data-testid="stAppViewContainer"] {
         background-color: #ffffff !important;
         color: #000000 !important;
     }
 
-    /* Force all body text, labels, headers, radio options, and form titles to sharp black */
+    /* All body text, labels, headers, and form titles forced to sharp black */
     p, span, label, h1, h2, h3, h4, h5, h6, .stMarkdown, div[role="radiogroup"] label {
         color: #000000 !important;
-        font-weight: 500;
+        font-weight: 600 !important;
+    }
+
+    /* Light Green Entry Boxes (Text inputs, Selectboxes, Number inputs, Date pickers) */
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div,
+    input, textarea, select {
+        background-color: #e8f5e9 !important; /* Soft light green tint */
+        color: #000000 !important;
+        border: 1px solid #81c784 !important;
+        border-radius: 6px !important;
+    }
+
+    /* Dropdown text & option legibility */
+    div[data-baseweb="select"] *, div[role="listbox"] * {
+        color: #000000 !important;
     }
 
     /* Manila / Light Green Header Banner */
@@ -196,7 +211,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Title Banner
+# Header Title Banner
 st.markdown(
     """
     <div class="header-container">
@@ -232,7 +247,7 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------------------------------------------
-# SIDEBAR NAVIGATION (RESTORED FULL MODULE LIST)
+# SIDEBAR NAVIGATION (PROGRAMS MODULE LIST)
 # ---------------------------------------------------------
 st.sidebar.markdown(f"### 📍 **Barangay {st.session_state['user_brgy']}**")
 
@@ -247,7 +262,7 @@ st.sidebar.markdown("**Health Programs Navigation**")
 nav_program = st.sidebar.radio(
     "Select Program Module:",
     [
-        "PhilPEN Risk Assessment",
+        "PhilPEN risk assessment",
         "Nutritional Status of 0-59 months old",
         "Expanded Program on Immunization",
         "Maternal Care",
@@ -260,7 +275,7 @@ nav_program = st.sidebar.radio(
 # ---------------------------------------------------------
 # PROGRAM MODULE ROUTING
 # ---------------------------------------------------------
-if nav_program == "PhilPEN Risk Assessment":
+if nav_program == "PhilPEN risk assessment":
     st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
     with st.form("assessment_form"):
@@ -445,6 +460,6 @@ elif nav_program == "Barangay Database (PhilPEN Records)":
 else:
     st.subheader(f"{nav_program} Module")
     st.info(
-        f"The **{nav_program}** module is currently under development. "
-        "PhilPEN Risk Assessment is presently active for data collection."
+        f"The **{nav_program}** program module is scheduled for data integration. "
+        "PhilPEN risk assessment is currently the active module for data entry."
     )
