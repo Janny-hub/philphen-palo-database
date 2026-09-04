@@ -96,6 +96,33 @@ BARANGAY_CREDENTIALS = {
 }
 
 # ---------------------------------------------------------
+# COMMON PHILIPPINE MEDICATIONS LIST
+# ---------------------------------------------------------
+DIABETES_MEDICATIONS = [
+    "Wala / None",
+    "Metformin (500mg/850mg)",
+    "Gliclazide (30mg/80mg)",
+    "Glimepiride (2mg/4mg)",
+    "Insulin Human NPH / Regular",
+    "Sitagliptin",
+    "Empagliflozin",
+    "Iba pa (Others)",
+]
+
+HYPERTENSION_MEDICATIONS = [
+    "Wala / None",
+    "Amlodipine (5mg/10mg)",
+    "Losartan (50mg/100mg)",
+    "Metoprolol (50mg/100mg)",
+    "Captopril (25mg)",
+    "Enalapril (5mg/20mg)",
+    "Hydrochlorothiazide / HCTZ (12.5mg/25mg)",
+    "Telmisartan (40mg/80mg)",
+    "Carvedilol (6.25mg/12.5mg)",
+    "Iba pa (Others)",
+]
+
+# ---------------------------------------------------------
 # COMPUTATION & DUPLICATE CHECK HELPER FUNCTIONS
 # ---------------------------------------------------------
 def calculate_age(born):
@@ -164,7 +191,7 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
     conn.close()
 
     if result:
-        return True, result[1]  # Returns True and existing Assessment Date
+        return True, result[1]
     return False, None
 
 
@@ -188,7 +215,7 @@ st.markdown(
         font-weight: 600 !important;
     }
 
-    /* Light Green Inputs */
+    /* Form Input Fields Styling */
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div,
     input, textarea, select {
@@ -198,20 +225,34 @@ st.markdown(
         border-radius: 6px !important;
     }
 
-    /* Date Picker Calendar Overrides */
+    /* DATE PICKER FIX: Legible green theme & black text */
+    .stDateInput input,
+    div[data-baseweb="datepicker"] input,
+    div[data-baseweb="datepicker"] > div {
+        background-color: #e8f5e9 !important;
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+        font-weight: bold !important;
+    }
+
+    /* Calendar Popup Overrides */
     div[data-baseweb="popover"],
     div[data-baseweb="calendar"],
     div[data-baseweb="calendar"] *,
     div[role="dialog"],
-    div[role="dialog"] *,
-    ul[role="listbox"],
-    ul[role="listbox"] * {
-        background-color: #e8f5e9 !important;
+    div[role="dialog"] * {
+        background-color: #f1f8e9 !important;
         color: #000000 !important;
     }
 
     div[data-baseweb="calendar"] button:hover {
-        background-color: #a5d6a7 !important;
+        background-color: #c8e6c9 !important;
+    }
+
+    /* Multi-select Badges */
+    span[data-baseweb="tag"] {
+        background-color: #28a745 !important;
+        color: #ffffff !important;
     }
 
     /* Buttons */
@@ -413,12 +454,32 @@ if nav_program == "PhilPEN risk assessment":
     waist_risk = classify_waist(sex, waist) if waist > 0 else "N/A"
     st.info(f"**Waist Risk Status:** {waist_risk}")
 
-    st.markdown("**3. Medical History**")
-    has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
-    diabetes_meds = st.text_input("Ano ang iniinom mong gamot para sa Diabetes?", key="p_diab_meds")
+    st.markdown("**3. Medical History & Medications (Philippine Primary Care Standards)**")
+    col_diab, col_htn = st.columns(2)
 
-    has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"], key="p_htn")
-    htn_meds = st.text_input("Ano ang iniinom mong gamot para sa Hypertension?", key="p_htn_meds")
+    with col_diab:
+        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
+        diabetes_meds_selected = []
+        if has_diabetes == "Meron":
+            diabetes_meds_selected = st.multiselect(
+                "Ano ang iniinom mong gamot para sa Diabetes? (Pumili ng isa o higit pa)",
+                options=DIABETES_MEDICATIONS,
+                default=["Metformin (500mg/850mg)"],
+                key="p_diab_meds_multi",
+            )
+        diabetes_meds_str = ", ".join(diabetes_meds_selected) if diabetes_meds_selected else "None"
+
+    with col_htn:
+        has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"], key="p_htn")
+        htn_meds_selected = []
+        if has_htn == "Meron":
+            htn_meds_selected = st.multiselect(
+                "Ano ang iniinom mong gamot para sa Hypertension? (Pumili ng isa o higit pa)",
+                options=HYPERTENSION_MEDICATIONS,
+                default=["Amlodipine (5mg/10mg)"],
+                key="p_htn_meds_multi",
+            )
+        htn_meds_str = ", ".join(htn_meds_selected) if htn_meds_selected else "None"
 
     cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"], key="p_chol")
 
@@ -533,9 +594,9 @@ if nav_program == "PhilPEN risk assessment":
                     waist,
                     waist_risk,
                     has_diabetes,
-                    diabetes_meds,
+                    diabetes_meds_str,
                     has_htn,
-                    htn_meds,
+                    htn_meds_str,
                     cholesterol,
                     int(cvd_stroke),
                     int(heart_attack),
@@ -558,9 +619,11 @@ if nav_program == "PhilPEN risk assessment":
             st.success("Record successfully saved to the barangay database!")
 
 elif nav_program == "Barangay Database (PhilPEN Records)":
-    st.subheader(f"PhilPEN Database — Barangay {st.session_state['user_brgy']}")
+    st.subheader(f"PhilPEN Database & Analytics — Barangay {st.session_state['user_brgy']}")
 
-    tab_view, tab_edit = st.tabs(["📋 View All Records", "✏️ Edit Resident Record"])
+    tab_view, tab_analytics, tab_edit = st.tabs(
+        ["📋 View All Records", "📊 Assessment Analytics & Reports", "✏️ Edit Resident Record"]
+    )
 
     conn = sqlite3.connect("philpen_palo.db")
     df = pd.read_sql_query(
@@ -570,6 +633,9 @@ elif nav_program == "Barangay Database (PhilPEN Records)":
     )
     conn.close()
 
+    # ---------------------------------------------------------
+    # TAB 1: VIEW ALL RECORDS
+    # ---------------------------------------------------------
     with tab_view:
         if not df.empty:
             st.dataframe(df, use_container_width=True)
@@ -583,6 +649,147 @@ elif nav_program == "Barangay Database (PhilPEN Records)":
         else:
             st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
 
+    # ---------------------------------------------------------
+    # TAB 2: DATABASE ANALYTICS & STATISTICAL BREAKDOWN
+    # ---------------------------------------------------------
+    with tab_analytics:
+        if df.empty:
+            st.info("No assessment records found to analyze.")
+        else:
+            st.markdown("### 📈 Key Indicator Dashboard & Patient Lists")
+
+            # Calculations
+            adults_20_64 = df[(df["age"] >= 20) & (df["age"] <= 64)]
+            seniors_65_plus = df[df["age"] >= 65]
+            rhu_referred = df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)]
+            diabetic_patients = df[df["has_diabetes"] == "Meron"]
+            hypertensive_patients = df[df["has_hypertension"] == "Meron"]
+
+            # Summary Cards
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            col_m1.metric("Total Assessed", len(df))
+            col_m2.metric("Adults (20-64 yrs)", len(adults_20_64))
+            col_m3.metric("Older Adults (65+ yrs)", len(seniors_65_plus))
+            col_m4.metric("Referred to RHU", len(rhu_referred))
+
+            st.markdown("---")
+
+            # 1. Age and Sex Distribution Analysis
+            st.markdown("#### **1. Age & Sex Distribution of Assessed Residents**")
+            
+            # Age Grouping Categorization
+            bins = [0, 19, 30, 45, 64, 120]
+            labels = ["< 20 yrs", "20-29 yrs", "30-44 yrs", "45-64 yrs", "65+ yrs"]
+            df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+
+            age_sex_dist = pd.crosstab(df["age_group"], df["sex"], margins=True, margins_name="Total")
+            st.dataframe(age_sex_dist, use_container_width=True)
+
+            col_chart1, col_chart2 = st.columns(2)
+            with col_chart1:
+                st.markdown("**Sex Breakdown:**")
+                st.bar_chart(df["sex"].value_counts())
+            with col_chart2:
+                st.markdown("**Age Group Breakdown:**")
+                st.bar_chart(df["age_group"].value_counts(sort=False))
+
+            st.markdown("---")
+
+            # 2 & 3. Adults and Seniors Summary
+            st.markdown("#### **2 & 3. Age Demographic Groups**")
+            col_ad, col_sr = st.columns(2)
+            with col_ad:
+                st.markdown(f"**Adults Assessed (20 - 64 years old):** `{len(adults_20_64)}`")
+                if not adults_20_64.empty:
+                    st.dataframe(
+                        adults_20_64[["id", "last_name", "first_name", "age", "sex", "zone", "risk_level"]],
+                        use_container_width=True,
+                    )
+            with col_sr:
+                st.markdown(f"**Older Adults Assessed (65 years & above):** `{len(seniors_65_plus)}`")
+                if not seniors_65_plus.empty:
+                    st.dataframe(
+                        seniors_65_plus[["id", "last_name", "first_name", "age", "sex", "zone", "risk_level"]],
+                        use_container_width=True,
+                    )
+
+            st.markdown("---")
+
+            # 4. RHU Referrals
+            st.markdown(f"#### **4. Patients Referred to RHU (`{len(rhu_referred)}` Total)**")
+            if not rhu_referred.empty:
+                st.dataframe(
+                    rhu_referred[
+                        [
+                            "id",
+                            "last_name",
+                            "first_name",
+                            "age",
+                            "sex",
+                            "bp_1",
+                            "has_diabetes",
+                            "has_hypertension",
+                            "risk_level",
+                            "action_taken",
+                        ]
+                    ],
+                    use_container_width=True,
+                )
+            else:
+                st.write("No patients currently recorded with RHU referral actions.")
+
+            st.markdown("---")
+
+            # 5. Diabetic Patients List
+            st.markdown(f"#### **5. Diabetic Patients Master List (`{len(diabetic_patients)}` Total)**")
+            if not diabetic_patients.empty:
+                st.dataframe(
+                    diabetic_patients[
+                        [
+                            "id",
+                            "last_name",
+                            "first_name",
+                            "age",
+                            "sex",
+                            "zone",
+                            "diabetes_meds",
+                            "risk_level",
+                            "action_taken",
+                        ]
+                    ],
+                    use_container_width=True,
+                )
+            else:
+                st.write("No diabetic patients identified.")
+
+            st.markdown("---")
+
+            # 6. Hypertensive Patients List
+            st.markdown(f"#### **6. Hypertensive Patients Master List (`{len(hypertensive_patients)}` Total)**")
+            if not hypertensive_patients.empty:
+                st.dataframe(
+                    hypertensive_patients[
+                        [
+                            "id",
+                            "last_name",
+                            "first_name",
+                            "age",
+                            "sex",
+                            "zone",
+                            "bp_1",
+                            "hypertension_meds",
+                            "risk_level",
+                            "action_taken",
+                        ]
+                    ],
+                    use_container_width=True,
+                )
+            else:
+                st.write("No hypertensive patients identified.")
+
+    # ---------------------------------------------------------
+    # TAB 3: EDIT RESIDENT RECORD
+    # ---------------------------------------------------------
     with tab_edit:
         if df.empty:
             st.info("No resident records available to edit yet.")
