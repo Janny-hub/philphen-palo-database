@@ -1027,19 +1027,24 @@ elif nav_program == "Barangay Database & Analytics":
                 "July", "August", "September", "October", "November", "December"
             ]
             
+            # Sex Disaggregated Monthly Counts
+            monthly_sex_cross = pd.crosstab(df["assessment_month"], df["sex"])
             monthly_counts = df["assessment_month"].value_counts().to_dict()
+            
             monthly_rows = []
             for m in all_months:
-                cnt = monthly_counts.get(m, 0)
-                pct = f"{round((cnt/total_count)*100, 1)}%" if total_count else "0%"
-                monthly_rows.append([m, f"<strong>{cnt}</strong>", pct])
+                m_cnt = monthly_sex_cross.loc[m, "Male"] if (m in monthly_sex_cross.index and "Male" in monthly_sex_cross.columns) else 0
+                f_cnt = monthly_sex_cross.loc[m, "Female"] if (m in monthly_sex_cross.index and "Female" in monthly_sex_cross.columns) else 0
+                tot_cnt = monthly_counts.get(m, 0)
+                pct = f"{round((tot_cnt/total_count)*100, 1)}%" if total_count else "0%"
+                monthly_rows.append([m, m_cnt, f_cnt, f"<strong>{tot_cnt}</strong>", pct])
 
-            m_col1, m_col2 = st.columns([2, 1])
+            m_col1, m_col2 = st.columns([2.5, 1])
             with m_col1:
                 st.markdown(
                     render_modern_table_html(
-                        "Monthly Screening Distribution Summary",
-                        ["Month", "Total Screened Entries", "Percentage of Total"],
+                        "Monthly Screening Distribution Summary (Sex-Disaggregated)",
+                        ["Month", "Male", "Female", "Total Screened Entries", "Percentage of Total"],
                         monthly_rows
                     ),
                     unsafe_allow_html=True
@@ -1050,7 +1055,7 @@ elif nav_program == "Barangay Database & Analytics":
                     <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
                         <h5 style="color: #818cf8; margin-top: 0;">📌 Month Tracking Notes</h5>
                         <p style="font-size: 0.85rem; color: #94a3b8;">
-                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa ng mga BHW para sa buong taon.
+                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa ng mga BHW (Lalaki, Babae, at Kabuuan) para sa buong taon.
                         </p>
                     </div>
                     """,
