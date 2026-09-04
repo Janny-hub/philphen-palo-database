@@ -484,13 +484,14 @@ st.sidebar.markdown(
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Navigation Menu**")
 
-# DIRECT MAIN MODULE NAVIGATION (PhilPEN Sub-modules integrated right below PhilPEN Program)
+# MAIN MODULE NAVIGATION WITH PHILPEN PROGRAM & NESTED SUB-MODULES
 main_nav = st.sidebar.radio(
     "Select Program Module:",
     [
         " Executive Dashboard",
-        "🩺 PhilPEN Risk Assessment Form",
-        "📊 PhilPEN Database & Analytics",
+        "PhilPEN Program",
+        "   └ 🩺 Risk Assessment Form",
+        "   └ 📊 Database & Analytics",
         "Nutritional Status (0-59 mos)",
         "Expanded Program on Immunization",
         "Maternal Care",
@@ -623,9 +624,9 @@ if main_nav == " Executive Dashboard":
             st.success("No residents currently categorized as High or Very High CVD Risk.")
 
 # ---------------------------------------------------------
-# MODULE 2: PHILPEN RISK ASSESSMENT FORM
+# MODULE 2: PHILPEN PROGRAM - RISK ASSESSMENT FORM
 # ---------------------------------------------------------
-elif main_nav == "🩺 PhilPEN Risk Assessment Form":
+elif main_nav in ["PhilPEN Program", "   └ 🩺 Risk Assessment Form"]:
     st.subheader(f"PhilPEN Risk Assessment Form — {portal_location_title}")
 
     st.markdown("**1. General & Assessor Information**")
@@ -942,9 +943,9 @@ elif main_nav == "🩺 PhilPEN Risk Assessment Form":
             st.success("Record successfully saved to the database!")
 
 # ---------------------------------------------------------
-# MODULE 3: PHILPEN DATABASE & ANALYTICS
+# MODULE 3: PHILPEN PROGRAM - DATABASE & ANALYTICS
 # ---------------------------------------------------------
-elif main_nav == "📊 PhilPEN Database & Analytics":
+elif main_nav == "   └ 📊 Database & Analytics":
     st.subheader(f"PhilPEN Database & Statistical Reports — {portal_location_title}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
@@ -1084,7 +1085,7 @@ elif main_nav == "📊 PhilPEN Database & Analytics":
                 st.markdown("---")
 
             # ---------------------------------------------------------
-            # SECTION 1: MONTHLY ENTRIES BREAKDOWN WITH TOTAL BOX
+            # SECTION 1: MONTHLY ENTRIES BREAKDOWN WITH ADULT & ELDERLY
             # ---------------------------------------------------------
             st.markdown("### 🗓️ **Monthly Assessment Entry Breakdown (January - December)**")
             
@@ -1106,22 +1107,22 @@ elif main_nav == "📊 PhilPEN Database & Analytics":
                 "July", "August", "September", "October", "November", "December"
             ]
             
-            monthly_sex_cross = pd.crosstab(df["assessment_month"], df["sex"])
-            monthly_counts = df["assessment_month"].value_counts().to_dict()
-            
             monthly_rows = []
             for m in all_months:
-                m_cnt = monthly_sex_cross.loc[m, "Male"] if (m in monthly_sex_cross.index and "Male" in monthly_sex_cross.columns) else 0
-                f_cnt = monthly_sex_cross.loc[m, "Female"] if (m in monthly_sex_cross.index and "Female" in monthly_sex_cross.columns) else 0
-                tot_cnt = monthly_counts.get(m, 0)
-                monthly_rows.append([m, m_cnt, f_cnt, f"<strong>{tot_cnt}</strong>"])
+                m_df = df[df["assessment_month"] == m]
+                m_cnt = len(m_df[m_df["sex"] == "Male"])
+                f_cnt = len(m_df[m_df["sex"] == "Female"])
+                adult_cnt = len(m_df[(m_df["age"] >= 20) & (m_df["age"] <= 59)])
+                elderly_cnt = len(m_df[m_df["age"] >= 60])
+                tot_cnt = len(m_df)
+                monthly_rows.append([m, m_cnt, f_cnt, adult_cnt, elderly_cnt, f"<strong>{tot_cnt}</strong>"])
 
             m_col1, m_col2 = st.columns([2.5, 1])
             with m_col1:
                 st.markdown(
                     render_modern_table_html(
-                        "Monthly Screening Distribution Summary (Sex-Disaggregated)",
-                        ["Month", "Male", "Female", "Total Screened Entries"],
+                        "Monthly Screening Distribution Summary (Sex & Age Disaggregated)",
+                        ["Month", "Male", "Female", "Adults (20-59)", "Elderly (60+)", "Total Screened Entries"],
                         monthly_rows
                     ),
                     unsafe_allow_html=True
@@ -1132,7 +1133,7 @@ elif main_nav == "📊 PhilPEN Database & Analytics":
                     <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
                         <h5 style="color: #818cf8; margin-top: 0;">📌 Month Tracking Notes</h5>
                         <p style="font-size: 0.85rem; color: #94a3b8;">
-                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa (Lalaki, Babae, at Kabuuan) para sa buong taon.
+                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa (Kasarian: Lalaki at Babae; Edad: Adults 20-59 y/o at Elderly 60+ y/o) para sa buong taon.
                         </p>
                     </div>
                     """,
