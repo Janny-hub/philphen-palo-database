@@ -123,7 +123,7 @@ HYPERTENSION_MEDICATIONS = [
 ]
 
 # ---------------------------------------------------------
-# COMPUTATION & DUPLICATE CHECK HELPER FUNCTIONS
+# HELPER CALCULATIONS & DUPLICATE CHECK
 # ---------------------------------------------------------
 def calculate_age(born):
     today = datetime.date.today()
@@ -166,7 +166,6 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
-    """Checks if a resident has already been assessed within the specified calendar year."""
     if not first_name.strip() or not last_name.strip():
         return False, None
 
@@ -196,130 +195,144 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & CUSTOM STYLING
+# STREAMLIT CONFIG & MODERN UI STYLING
 # ---------------------------------------------------------
-st.set_page_config(page_title="e-FHSIS: Palo, Leyte", layout="wide")
+st.set_page_config(page_title="e-FHSIS | Palo, Leyte Portal", layout="wide", page_icon="🏥")
 
 st.markdown(
     """
     <style>
-    /* Main Background */
-    .stApp, [data-testid="stAppViewContainer"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
 
-    /* All Standard Text & Labels */
-    p, span, label, h1, h2, h3, h4, h5, h6, .stMarkdown, div[role="radiogroup"] label {
-        color: #000000 !important;
-        font-weight: 600 !important;
+    /* Overall Background */
+    .stApp {
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
     }
 
-    /* Form Input Fields Styling */
+    /* Modern Top Header Banner */
+    .header-banner {
+        background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
+        padding: 24px 30px;
+        border-radius: 16px;
+        color: #ffffff;
+        box-shadow: 0 10px 25px -5px rgba(13, 148, 136, 0.25);
+        margin-bottom: 25px;
+    }
+    .header-banner h1 {
+        color: #ffffff !important;
+        font-size: 2rem !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        letter-spacing: -0.02em;
+    }
+    .header-banner p {
+        color: #e0f2fe !important;
+        font-size: 1rem !important;
+        margin-top: 6px !important;
+        font-weight: 500 !important;
+    }
+
+    /* Modern KPI Cards */
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+    }
+    .kpi-label {
+        font-size: 0.825rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-top: 4px;
+        margin-bottom: 2px;
+    }
+    .kpi-subtext {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #0d9488;
+    }
+
+    /* Modernized Input Fields */
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div,
     input, textarea, select {
-        background-color: #e8f5e9 !important;
-        color: #000000 !important;
-        border: 1px solid #81c784 !important;
-        border-radius: 6px !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        font-weight: 500 !important;
+    }
+    div[data-baseweb="input"] > div:focus-within,
+    div[data-baseweb="select"] > div:focus-within {
+        border-color: #0d9488 !important;
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
     }
 
-    /* DATE PICKER FIX: Legible green theme & black text */
-    .stDateInput input,
-    div[data-baseweb="datepicker"] input,
-    div[data-baseweb="datepicker"] > div {
-        background-color: #e8f5e9 !important;
-        color: #000000 !important;
-        -webkit-text-fill-color: #000000 !important;
-        font-weight: bold !important;
-    }
-
-    /* Calendar Popup Overrides */
-    div[data-baseweb="popover"],
-    div[data-baseweb="calendar"],
-    div[data-baseweb="calendar"] *,
-    div[role="dialog"],
-    div[role="dialog"] * {
-        background-color: #f1f8e9 !important;
-        color: #000000 !important;
-    }
-
-    div[data-baseweb="calendar"] button:hover {
-        background-color: #c8e6c9 !important;
-    }
-
-    /* Multi-select Badges */
-    span[data-baseweb="tag"] {
-        background-color: #28a745 !important;
-        color: #ffffff !important;
+    /* Date Picker Input Fixing */
+    .stDateInput input {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+        font-weight: 600 !important;
+        background-color: #ffffff !important;
     }
 
     /* Buttons */
-    .stButton > button, button[kind="primary"], button[kind="secondary"] {
-        background-color: #28a745 !important;
+    .stButton > button {
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%) !important;
         color: #ffffff !important;
-        border-radius: 6px !important;
+        border-radius: 10px !important;
         border: none !important;
-        font-weight: bold !important;
+        font-weight: 700 !important;
+        padding: 10px 24px !important;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;
     }
-
     .stButton > button:hover {
-        background-color: #218838 !important;
-        color: #ffffff !important;
+        background: linear-gradient(135deg, #0f766e 0%, #047857 100%) !important;
+        box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3) !important;
     }
 
-    /* Header Banner */
-    .header-container {
-        background-color: #d4edda;
-        border: 2px solid #b1dfbb;
-        border-left: 8px solid #28a745;
-        padding: 20px;
-        border-radius: 6px;
-        text-align: center;
-        margin-bottom: 20px;
+    /* Red Flag Banner for Double Entry */
+    .flag-red-card {
+        background-color: #fef2f2 !important;
+        border: 1.5px solid #fecaca !important;
+        border-left: 6px solid #ef4444 !important;
+        padding: 18px !important;
+        border-radius: 12px !important;
+        margin-bottom: 20px !important;
     }
-    .header-container h1 {
-        color: #155724 !important;
-        margin: 0;
-        font-weight: 800;
-        font-size: 2.1rem;
+    .flag-red-card h4 {
+        color: #991b1b !important;
+        margin: 0 0 6px 0 !important;
+        font-weight: 800 !important;
+        font-size: 1.05rem !important;
     }
-    .header-container p {
-        color: #1e4620 !important;
-        margin: 6px 0 0 0;
-        font-size: 1.1rem;
-        font-weight: 600;
+    .flag-red-card p {
+        color: #7f1d1d !important;
+        margin: 0 !important;
+        font-size: 0.95rem !important;
     }
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
-        border-right: 1px solid #dee2e6;
-    }
-
-    /* Dynamic Flag Banner */
-    .flag-red-banner {
-        background-color: #f8d7da !important;
-        border: 2px solid #f5c6cb !important;
-        border-left: 8px solid #dc3545 !important;
-        padding: 15px !important;
-        border-radius: 6px !important;
-        margin-bottom: 15px !important;
-    }
-    .flag-red-banner h4 {
-        color: #721c24 !important;
-        margin: 0 0 5px 0 !important;
-        font-weight: 800 !important;
-    }
-    .flag-red-banner p {
-        color: #721c24 !important;
-        margin: 0 !important;
-        font-weight: 600 !important;
-    }
-
-    .stProgress > div > div > div > div {
-        background-color: #28a745 !important;
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0 !important;
     }
     </style>
     """,
@@ -329,9 +342,9 @@ st.markdown(
 # Header Title Banner
 st.markdown(
     """
-    <div class="header-container">
-        <h1>e-FHSIS: Electronic Field Health Services Information System</h1>
-        <p>Palo, Leyte — Rural Health Unit Data Management Portal</p>
+    <div class="header-banner">
+        <h1>e-FHSIS Healthcare Portal</h1>
+        <p>Rural Health Unit Data Management & PhilPEN Analytics — Palo, Leyte</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -372,25 +385,138 @@ if st.sidebar.button("Logout"):
     st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Health Programs Navigation**")
+st.sidebar.markdown("**Navigation Menu**")
 
 nav_program = st.sidebar.radio(
-    "Select Program Module:",
+    "Select Portal View:",
     [
-        "PhilPEN risk assessment",
-        "Nutritional Status of 0-59 months old",
+        " Executive Dashboard",
+        "PhilPEN Risk Assessment Form",
+        "Barangay Database & Analytics",
+        "Nutritional Status (0-59 mos)",
         "Expanded Program on Immunization",
         "Maternal Care",
         "Schistosomiasis",
         "NTP",
-        "Barangay Database (PhilPEN Records)",
     ],
 )
 
+# Fetch Current Barangay Dataset
+conn = sqlite3.connect("philpen_palo.db")
+df = pd.read_sql_query(
+    "SELECT * FROM assessments WHERE barangay = ?",
+    conn,
+    params=(st.session_state["user_brgy"],),
+)
+conn.close()
+
 # ---------------------------------------------------------
-# PROGRAM MODULE ROUTING
+# MODULE 1: EXECUTIVE DASHBOARD
 # ---------------------------------------------------------
-if nav_program == "PhilPEN risk assessment":
+if nav_program == " Executive Dashboard":
+    st.subheader(f" Baragay Health Executive Dashboard — {st.session_state['user_brgy']}")
+
+    if df.empty:
+        st.info("No resident risk assessment records found. Complete assessments to generate real-time metrics.")
+    else:
+        # KPI Row
+        total_assessed = len(df)
+        high_risk = len(df[df["risk_level"] == "High"])
+        diabetic_ct = len(df[df["has_diabetes"] == "Meron"])
+        hypertensive_ct = len(df[df["has_hypertension"] == "Meron"])
+        rhu_ref_ct = len(df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)])
+
+        k1, k2, k3, k4, k5 = st.columns(5)
+        with k1:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Assessed</div>
+                    <div class="kpi-value">{total_assessed}</div>
+                    <div class="kpi-subtext">Residents Screened</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k2:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">High CVD Risk</div>
+                    <div class="kpi-value" style="color: #ef4444;">{high_risk}</div>
+                    <div class="kpi-subtext">Needs Urgent Follow-up</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k3:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Diabetic Cases</div>
+                    <div class="kpi-value" style="color: #f59e0b;">{diabetic_ct}</div>
+                    <div class="kpi-subtext">{round((diabetic_ct/total_assessed)*100, 1) if total_assessed else 0}% Prev. Rate</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k4:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">Hypertensive</div>
+                    <div class="kpi-value" style="color: #06b6d4;">{hypertensive_ct}</div>
+                    <div class="kpi-subtext">{round((hypertensive_ct/total_assessed)*100, 1) if total_assessed else 0}% Prev. Rate</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+        with k5:
+            st.markdown(
+                f"""
+                <div class="kpi-card">
+                    <div class="kpi-label">RHU Referrals</div>
+                    <div class="kpi-value" style="color: #8b5cf6;">{rhu_ref_ct}</div>
+                    <div class="kpi-subtext">Physician Care</div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Visual Analytics Charts
+        chart_col1, chart_col2 = st.columns(2)
+
+        with chart_col1:
+            st.markdown("#### **CVD Risk Stratification Breakdown**")
+            risk_counts = df["risk_level"].value_counts()
+            st.bar_chart(risk_counts, color="#0d9488")
+
+        with chart_col2:
+            st.markdown("#### **Demographics: Age Group & Sex Distribution**")
+            bins = [0, 19, 30, 45, 64, 120]
+            labels = ["<20", "20-29", "30-44", "45-64", "65+"]
+            df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+            age_sex_df = pd.crosstab(df["age_group"], df["sex"])
+            st.line_chart(age_sex_df)
+
+        st.markdown("---")
+
+        # Actionable Priority Patients Table
+        st.markdown("####  **High-Risk Patients Requiring Medical Intervention**")
+        high_risk_df = df[df["risk_level"] == "High"][
+            ["id", "last_name", "first_name", "age", "sex", "zone", "bp_1", "has_diabetes", "action_taken"]
+        ]
+        if not high_risk_df.empty:
+            st.dataframe(high_risk_df, use_container_width=True)
+        else:
+            st.success("No residents currently categorized as High CVD Risk.")
+
+# ---------------------------------------------------------
+# MODULE 2: PHILPEN RISK ASSESSMENT FORM
+# ---------------------------------------------------------
+elif nav_program == "PhilPEN Risk Assessment Form":
     st.subheader(f"PhilPEN Risk Assessment Form — Barangay {st.session_state['user_brgy']}")
 
     progress_container = st.container()
@@ -420,19 +546,19 @@ if nav_program == "PhilPEN risk assessment":
     with col_sex:
         sex = st.radio("Sex*", ["Male", "Female", "Other"], key="p_sex")
 
-    # DOUBLE ENTRY CHECK & RED FLAGGING LOGIC
+    # DOUBLE ENTRY CHECK & RED FLAGGING
     assessment_year = assessment_date.year
     is_duplicate, prev_date = check_annual_duplicate(first_name, last_name, dob, assessment_year)
 
     if is_duplicate:
         st.markdown(
             f"""
-            <div class="flag-red-banner">
+            <div class="flag-red-card">
                 <h4>🔴 FLAGGED AS DOUBLE ENTRY (ANNUAL LIMIT EXCEEDED)</h4>
                 <p>
                     <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) has already been assessed on 
-                    <strong>{prev_date}</strong> for the year <strong>{assessment_year}</strong>.<br>
-                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Risk Assessment <u>once per calendar year</u>.</em>
+                    <strong>{prev_date}</strong> for calendar year <strong>{assessment_year}</strong>.<br>
+                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per year</u>.</em>
                 </p>
             </div>
             """,
@@ -462,7 +588,7 @@ if nav_program == "PhilPEN risk assessment":
         diabetes_meds_selected = []
         if has_diabetes == "Meron":
             diabetes_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Diabetes? (Pumili ng isa o higit pa)",
+                "Ano ang iniinom mong gamot para sa Diabetes?",
                 options=DIABETES_MEDICATIONS,
                 default=["Metformin (500mg/850mg)"],
                 key="p_diab_meds_multi",
@@ -474,7 +600,7 @@ if nav_program == "PhilPEN risk assessment":
         htn_meds_selected = []
         if has_htn == "Meron":
             htn_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Hypertension? (Pumili ng isa o higit pa)",
+                "Ano ang iniinom mong gamot para sa Hypertension?",
                 options=HYPERTENSION_MEDICATIONS,
                 default=["Amlodipine (5mg/10mg)"],
                 key="p_htn_meds_multi",
@@ -505,13 +631,6 @@ if nav_program == "PhilPEN risk assessment":
         st.warning("BP is ≥ 140/90. Please rest for 15 minutes and retake.")
         bp2 = st.text_input("Pangalawang Blood Pressure (optional)", key="p_bp2")
         bp3 = st.text_input("Pangatlong Blood Pressure (optional)", key="p_bp3")
-        if bp2 and bp3 and "/" in bp2 and "/" in bp3:
-            try:
-                s2, _ = map(int, bp2.split("/"))
-                s3, _ = map(int, bp3.split("/"))
-                bp_avg = f"{(s2+s3)//2}"
-            except ValueError:
-                pass
 
     st.markdown("**5. Lifestyle & Risk Stratification**")
     smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"], key="p_smoke")
@@ -535,7 +654,7 @@ if nav_program == "PhilPEN risk assessment":
         key="p_action",
     )
 
-    # Progress Calculation
+    # Progress Bar Calculations
     required_checks = [
         bool(last_name.strip()),
         bool(first_name.strip()),
@@ -551,13 +670,11 @@ if nav_program == "PhilPEN risk assessment":
     total_required = len(required_checks)
     progress_pct = int((completed_fields / total_required) * 100)
 
-    # Render Progress Bar at TOP
     with progress_container:
         st.markdown(f"### 📋 **Form Filling Progress:** `{completed_fields}/{total_required} Required Fields ({progress_pct}%)`")
         st.progress(progress_pct / 100)
         st.markdown("---")
 
-    # Save Record Button
     if st.button("Save Assessment Record"):
         if is_duplicate:
             st.error(f"⛔ CANNOT SAVE RECORD: {first_name} {last_name} has already been assessed for {assessment_year}!")
@@ -618,24 +735,16 @@ if nav_program == "PhilPEN risk assessment":
             conn.close()
             st.success("Record successfully saved to the barangay database!")
 
-elif nav_program == "Barangay Database (PhilPEN Records)":
-    st.subheader(f"PhilPEN Database & Analytics — Barangay {st.session_state['user_brgy']}")
+# ---------------------------------------------------------
+# MODULE 3: DATABASE & ANALYTICS
+# ---------------------------------------------------------
+elif nav_program == "Barangay Database & Analytics":
+    st.subheader(f"PhilPEN Database & Statistical Reports — Barangay {st.session_state['user_brgy']}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
-        ["📋 View All Records", "📊 Assessment Analytics & Reports", "✏️ Edit Resident Record"]
+        ["📋 View Master Records", "📊 Detailed Analytics & Reports", "✏️ Edit Resident Record"]
     )
 
-    conn = sqlite3.connect("philpen_palo.db")
-    df = pd.read_sql_query(
-        "SELECT * FROM assessments WHERE barangay = ?",
-        conn,
-        params=(st.session_state["user_brgy"],),
-    )
-    conn.close()
-
-    # ---------------------------------------------------------
-    # TAB 1: VIEW ALL RECORDS
-    # ---------------------------------------------------------
     with tab_view:
         if not df.empty:
             st.dataframe(df, use_container_width=True)
@@ -649,223 +758,81 @@ elif nav_program == "Barangay Database (PhilPEN Records)":
         else:
             st.info(f"No records found for Barangay {st.session_state['user_brgy']}.")
 
-    # ---------------------------------------------------------
-    # TAB 2: DATABASE ANALYTICS & STATISTICAL BREAKDOWN
-    # ---------------------------------------------------------
     with tab_analytics:
         if df.empty:
             st.info("No assessment records found to analyze.")
         else:
-            st.markdown("### 📈 Key Indicator Dashboard & Patient Lists")
-
-            # Calculations
             adults_20_64 = df[(df["age"] >= 20) & (df["age"] <= 64)]
             seniors_65_plus = df[df["age"] >= 65]
             rhu_referred = df[df["action_taken"].astype(str).str.contains("RHU", case=False, na=False)]
             diabetic_patients = df[df["has_diabetes"] == "Meron"]
             hypertensive_patients = df[df["has_hypertension"] == "Meron"]
 
-            # Summary Cards
-            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-            col_m1.metric("Total Assessed", len(df))
-            col_m2.metric("Adults (20-64 yrs)", len(adults_20_64))
-            col_m3.metric("Older Adults (65+ yrs)", len(seniors_65_plus))
-            col_m4.metric("Referred to RHU", len(rhu_referred))
-
-            st.markdown("---")
-
-            # 1. Age and Sex Distribution Analysis
-            st.markdown("#### **1. Age & Sex Distribution of Assessed Residents**")
-            
-            # Age Grouping Categorization
+            st.markdown("#### **1. Age & Sex Breakdown Table**")
             bins = [0, 19, 30, 45, 64, 120]
             labels = ["< 20 yrs", "20-29 yrs", "30-44 yrs", "45-64 yrs", "65+ yrs"]
             df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
-
             age_sex_dist = pd.crosstab(df["age_group"], df["sex"], margins=True, margins_name="Total")
             st.dataframe(age_sex_dist, use_container_width=True)
 
-            col_chart1, col_chart2 = st.columns(2)
-            with col_chart1:
-                st.markdown("**Sex Breakdown:**")
-                st.bar_chart(df["sex"].value_counts())
-            with col_chart2:
-                st.markdown("**Age Group Breakdown:**")
-                st.bar_chart(df["age_group"].value_counts(sort=False))
-
             st.markdown("---")
-
-            # 2 & 3. Adults and Seniors Summary
-            st.markdown("#### **2 & 3. Age Demographic Groups**")
+            st.markdown(f"#### **2 & 3. Key Demographic Cohorts**")
             col_ad, col_sr = st.columns(2)
             with col_ad:
                 st.markdown(f"**Adults Assessed (20 - 64 years old):** `{len(adults_20_64)}`")
                 if not adults_20_64.empty:
-                    st.dataframe(
-                        adults_20_64[["id", "last_name", "first_name", "age", "sex", "zone", "risk_level"]],
-                        use_container_width=True,
-                    )
+                    st.dataframe(adults_20_64[["id", "last_name", "first_name", "age", "sex", "risk_level"]], use_container_width=True)
             with col_sr:
-                st.markdown(f"**Older Adults Assessed (65 years & above):** `{len(seniors_65_plus)}`")
+                st.markdown(f"**Older Adults Assessed (65+ years old):** `{len(seniors_65_plus)}`")
                 if not seniors_65_plus.empty:
-                    st.dataframe(
-                        seniors_65_plus[["id", "last_name", "first_name", "age", "sex", "zone", "risk_level"]],
-                        use_container_width=True,
-                    )
+                    st.dataframe(seniors_65_plus[["id", "last_name", "first_name", "age", "sex", "risk_level"]], use_container_width=True)
 
             st.markdown("---")
-
-            # 4. RHU Referrals
-            st.markdown(f"#### **4. Patients Referred to RHU (`{len(rhu_referred)}` Total)**")
-            if not rhu_referred.empty:
-                st.dataframe(
-                    rhu_referred[
-                        [
-                            "id",
-                            "last_name",
-                            "first_name",
-                            "age",
-                            "sex",
-                            "bp_1",
-                            "has_diabetes",
-                            "has_hypertension",
-                            "risk_level",
-                            "action_taken",
-                        ]
-                    ],
-                    use_container_width=True,
-                )
-            else:
-                st.write("No patients currently recorded with RHU referral actions.")
-
-            st.markdown("---")
-
-            # 5. Diabetic Patients List
-            st.markdown(f"#### **5. Diabetic Patients Master List (`{len(diabetic_patients)}` Total)**")
+            st.markdown(f"#### **4. Diabetic Patients Master List (`{len(diabetic_patients)}`)**")
             if not diabetic_patients.empty:
-                st.dataframe(
-                    diabetic_patients[
-                        [
-                            "id",
-                            "last_name",
-                            "first_name",
-                            "age",
-                            "sex",
-                            "zone",
-                            "diabetes_meds",
-                            "risk_level",
-                            "action_taken",
-                        ]
-                    ],
-                    use_container_width=True,
-                )
-            else:
-                st.write("No diabetic patients identified.")
+                st.dataframe(diabetic_patients[["id", "last_name", "first_name", "age", "diabetes_meds", "risk_level"]], use_container_width=True)
 
-            st.markdown("---")
-
-            # 6. Hypertensive Patients List
-            st.markdown(f"#### **6. Hypertensive Patients Master List (`{len(hypertensive_patients)}` Total)**")
+            st.markdown(f"#### **5. Hypertensive Patients Master List (`{len(hypertensive_patients)}`)**")
             if not hypertensive_patients.empty:
-                st.dataframe(
-                    hypertensive_patients[
-                        [
-                            "id",
-                            "last_name",
-                            "first_name",
-                            "age",
-                            "sex",
-                            "zone",
-                            "bp_1",
-                            "hypertension_meds",
-                            "risk_level",
-                            "action_taken",
-                        ]
-                    ],
-                    use_container_width=True,
-                )
-            else:
-                st.write("No hypertensive patients identified.")
+                st.dataframe(hypertensive_patients[["id", "last_name", "first_name", "age", "bp_1", "hypertension_meds", "risk_level"]], use_container_width=True)
 
-    # ---------------------------------------------------------
-    # TAB 3: EDIT RESIDENT RECORD
-    # ---------------------------------------------------------
     with tab_edit:
         if df.empty:
-            st.info("No resident records available to edit yet.")
+            st.info("No records available to edit.")
         else:
-            st.markdown("### Select Resident Record to Edit")
             resident_options = {
-                f"ID {row['id']}: {row['last_name']}, {row['first_name']} (Assessment: {row['assessment_date']})": row["id"]
+                f"ID {row['id']}: {row['last_name']}, {row['first_name']} ({row['assessment_date']})": row["id"]
                 for _, row in df.iterrows()
             }
-            selected_label = st.selectbox("Select Resident:", list(resident_options.keys()))
+            selected_label = st.selectbox("Select Resident to Update:", list(resident_options.keys()))
             record_id = resident_options[selected_label]
-
             selected_row = df[df["id"] == record_id].iloc[0]
 
-            st.markdown("---")
-            st.markdown(f"**Editing Record for: {selected_row['first_name']} {selected_row['last_name']}**")
-
             with st.form("edit_resident_form"):
-                col_e1, col_e2, col_e3 = st.columns(3)
-                with col_e1:
-                    e_lname = st.text_input("Last Name", value=selected_row["last_name"])
-                    e_fname = st.text_input("First Name", value=selected_row["first_name"])
-                with col_e2:
-                    e_mname = st.text_input("Middle Name", value=str(selected_row["middle_name"] or ""))
-                    e_zone = st.text_input("Zone / Purok", value=selected_row["zone"])
-                with col_e3:
-                    e_weight = st.number_input("Weight (kg)", value=float(selected_row["weight_kg"]), step=0.5)
-                    e_height = st.number_input("Height (cm)", value=float(selected_row["height_cm"]), step=0.5)
-
-                e_waist = st.number_input("Waist (cm)", value=float(selected_row["waist_cm"]), step=0.5)
-                e_bp1 = st.text_input("Blood Pressure (1st reading)", value=selected_row["bp_1"])
-                e_smoker = st.radio("Smoker?", ["Hindi", "Oo"], index=0 if selected_row["is_smoker"] == "Hindi" else 1)
+                e_lname = st.text_input("Last Name", value=selected_row["last_name"])
+                e_fname = st.text_input("First Name", value=selected_row["first_name"])
+                e_weight = st.number_input("Weight (kg)", value=float(selected_row["weight_kg"]), step=0.5)
+                e_height = st.number_input("Height (cm)", value=float(selected_row["height_cm"]), step=0.5)
                 e_action = st.text_input("Action Taken", value=selected_row["action_taken"])
 
-                update_btn = st.form_submit_button("Update Resident Record")
-
-                if update_btn:
+                if st.form_submit_button("Update Resident Record"):
                     new_bmi = calculate_bmi(e_weight, e_height)
                     new_bmi_cat = classify_bmi(new_bmi)
-                    new_waist_risk = classify_waist(selected_row["sex"], e_waist)
 
                     conn = sqlite3.connect("philpen_palo.db")
                     c = conn.cursor()
                     c.execute(
                         """
-                        UPDATE assessments SET
-                            last_name = ?, first_name = ?, middle_name = ?, zone = ?,
-                            weight_kg = ?, height_cm = ?, bmi = ?, bmi_class = ?,
-                            waist_cm = ?, waist_risk = ?, bp_1 = ?, is_smoker = ?, action_taken = ?
-                        WHERE id = ?
+                        UPDATE assessments SET last_name=?, first_name=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?, action_taken=?
+                        WHERE id=?
                     """,
-                        (
-                            e_lname,
-                            e_fname,
-                            e_mname,
-                            e_zone,
-                            e_weight,
-                            e_height,
-                            new_bmi,
-                            new_bmi_cat,
-                            e_waist,
-                            new_waist_risk,
-                            e_bp1,
-                            e_smoker,
-                            e_action,
-                            record_id,
-                        ),
+                        (e_lname, e_fname, e_weight, e_height, new_bmi, new_bmi_cat, e_action, record_id),
                     )
                     conn.commit()
                     conn.close()
-                    st.success("Resident record successfully updated!")
+                    st.success("Record updated successfully!")
                     st.rerun()
 
 else:
     st.subheader(f"{nav_program} Module")
-    st.info(
-        f"The **{nav_program}** program module is scheduled for data integration. "
-        "PhilPEN risk assessment is currently the active module for data entry."
-    )
+    st.info(f"The **{nav_program}** module is scheduled for data integration.")
