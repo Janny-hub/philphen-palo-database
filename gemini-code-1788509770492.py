@@ -53,7 +53,7 @@ def init_db():
         )
     """
     )
-    
+
     # Database Migration Check for Columns
     c.execute("PRAGMA table_info(assessments)")
     columns = [column[1] for column in c.fetchall()]
@@ -191,7 +191,6 @@ def calculate_average_bp(bp1, bp2, bp3):
 
 
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
-    # Stratification based on WHO/ISH Chart Colors
     if (diabetes == "Meron" and sbp >= 160) or (sbp >= 180) or (diabetes == "Meron" and age >= 60 and smoker == "Oo"):
         return "Very High", "≥30%", "#7f1d1d", "#ffffff", "Urgent referral to Physician/ Hospital"
     elif diabetes == "Meron" or sbp >= 160 or (bmi >= 25.0 and age >= 60):
@@ -230,6 +229,31 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
     if result:
         return True, result[1]
     return False, None
+
+
+def render_modern_table_html(title, headers, rows):
+    header_html = "".join([f'<th style="padding: 10px; border-bottom: 2px solid #334155; color: #818cf8; font-weight: 600;">{h}</th>' for h in headers])
+    rows_html = ""
+    for row in rows:
+        cells = "".join([f'<td style="padding: 10px; border-bottom: 1px solid #334155;">{cell}</td>' for cell in row])
+        rows_html += f"<tr>{cells}</tr>"
+
+    html = f"""
+    <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+        <h5 style="color: #f8fafc; font-weight: 700; margin-top: 0; margin-bottom: 12px;">{title}</h5>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; color: #f8fafc; font-size: 0.9rem;">
+            <thead>
+                <tr style="background-color: #0f172a;">
+                    {header_html}
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </div>
+    """
+    return html
 
 
 # ---------------------------------------------------------
@@ -336,7 +360,7 @@ st.markdown(
         letter-spacing: 0.05em !important;
     }
     .kpi-value {
-        font-size: 2rem !important;
+        font-size: 1.8rem !important;
         font-weight: 700 !important;
         color: #f8fafc !important;
         margin-top: 4px !important;
@@ -884,7 +908,7 @@ elif nav_program == "Barangay Database & Analytics":
     st.subheader(f"PhilPEN Database & Statistical Reports — Barangay {st.session_state['user_brgy']}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
-        ["📋 Master Records Data Table", "📊 Visual Analytics & Chronic Rosters", "✏️ Edit Resident Record"]
+        ["📋 Master Records Data Table", "📊 Modern Analytics & Demographics", "✏️ Edit Resident Record"]
     )
 
     with tab_view:
@@ -905,32 +929,295 @@ elif nav_program == "Barangay Database & Analytics":
             st.info("No assessment records found to analyze.")
         else:
             total_count = len(df)
-            st.markdown("#### 📈 **Barangay Epidemiological Overview**")
 
-            m1, m2, m3, m4, m5 = st.columns(5)
+            # Age Categories
+            adults_df = df[(df["age"] >= 20) & (df["age"] <= 59)]
+            elderly_df = df[df["age"] >= 60]
+            adults_cnt = len(adults_df)
+            elderly_cnt = len(elderly_df)
+
             diab_df = df[df["has_diabetes"] == "Meron"]
             htn_df = df[df["has_hypertension"] == "Meron"]
             diab_cnt = len(diab_df)
             htn_cnt = len(htn_df)
             high_risk_cnt = len(df[df["risk_level"].isin(["High", "Very High"])])
-            smoker_cnt = len(df[df["is_smoker"] == "Oo"])
-            obese_cnt = len(df[df["bmi_class"].str.contains("OBESITY", na=False)])
 
-            with m1:
-                st.metric("Total Population Screened", total_count)
-            with m2:
-                st.metric("High/Very High CVD Risk", high_risk_cnt, delta=f"{round((high_risk_cnt/total_count)*100, 1)}%")
-            with m3:
-                st.metric("Diabetic Cases", diab_cnt, delta=f"{round((diab_cnt/total_count)*100, 1)}%")
-            with m4:
-                st.metric("Hypertensive Cases", htn_cnt, delta=f"{round((htn_cnt/total_count)*100, 1)}%")
-            with m5:
-                st.metric("Obesity Rate", obese_cnt, delta=f"{round((obese_cnt/total_count)*100, 1)}%")
+            st.markdown("#### 📈 **Barangay Epidemiological & Demographics Overview**")
+
+            k1, k2, k3, k4, k5, k6 = st.columns(6)
+            with k1:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Screened</div>
+                        <div class="kpi-value">{total_count}</div>
+                        <div class="kpi-subtext">100% Data</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with k2:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">Adults (20-59 y/o)</div>
+                        <div class="kpi-value" style="color: #38bdf8;">{adults_cnt}</div>
+                        <div class="kpi-subtext">{round((adults_cnt/total_count)*100, 1) if total_count else 0}% Pop</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with k3:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">Elderly (60+ y/o)</div>
+                        <div class="kpi-value" style="color: #fbbf24;">{elderly_cnt}</div>
+                        <div class="kpi-subtext">{round((elderly_cnt/total_count)*100, 1) if total_count else 0}% Pop</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with k4:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">High / Very High</div>
+                        <div class="kpi-value" style="color: #f43f5e;">{high_risk_cnt}</div>
+                        <div class="kpi-subtext">{round((high_risk_cnt/total_count)*100, 1) if total_count else 0}% CVD</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with k5:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">Diabetics</div>
+                        <div class="kpi-value" style="color: #a78bfa;">{diab_cnt}</div>
+                        <div class="kpi-subtext">{round((diab_cnt/total_count)*100, 1) if total_count else 0}% Rate</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with k6:
+                st.markdown(
+                    f"""
+                    <div class="kpi-card">
+                        <div class="kpi-label">Hypertensives</div>
+                        <div class="kpi-value" style="color: #4ade80;">{htn_cnt}</div>
+                        <div class="kpi-subtext">{round((htn_cnt/total_count)*100, 1) if total_count else 0}% Rate</div>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ---------------------------------------------------------
+            # SECTION 1: MONTHLY ENTRIES BREAKDOWN (JANUARY - DECEMBER)
+            # ---------------------------------------------------------
+            st.markdown("### 🗓️ **Monthly Assessment Entry Breakdown (January - December)**")
+            
+            df["assessment_dt"] = pd.to_datetime(df["assessment_date"], errors="coerce")
+            df["assessment_month"] = df["assessment_dt"].dt.strftime("%B")
+            
+            all_months = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]
+            
+            monthly_counts = df["assessment_month"].value_counts().to_dict()
+            monthly_rows = []
+            for m in all_months:
+                cnt = monthly_counts.get(m, 0)
+                pct = f"{round((cnt/total_count)*100, 1)}%" if total_count else "0%"
+                monthly_rows.append([m, f"<strong>{cnt}</strong>", pct])
+
+            m_col1, m_col2 = st.columns([2, 1])
+            with m_col1:
+                st.markdown(
+                    render_modern_table_html(
+                        "Monthly Screening Distribution Summary",
+                        ["Month", "Total Screened Entries", "Percentage of Total"],
+                        monthly_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+            with m_col2:
+                st.markdown(
+                    f"""
+                    <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
+                        <h5 style="color: #818cf8; margin-top: 0;">📌 Month Tracking Notes</h5>
+                        <p style="font-size: 0.85rem; color: #94a3b8;">
+                            Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa ng mga BHW para sa buong taon.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
             st.markdown("---")
 
             # ---------------------------------------------------------
-            # ROSTER OF DIABETIC & HYPERTENSIVE PATIENTS
+            # SECTION 2: SEX-DISAGGREGATED ANALYTICS (FEMALE VS MALE)
+            # ---------------------------------------------------------
+            st.markdown("### ⚖️ **Sex Analytics Breakdown Matrix (Female vs Male)**")
+            
+            sex_col1, sex_col2 = st.columns(2)
+
+            with sex_col1:
+                # 1. Hypertensive Matrix
+                htn_cross = pd.crosstab(df["has_hypertension"], df["sex"]).reset_index()
+                htn_rows = []
+                for _, r in htn_cross.iterrows():
+                    m_val = r.get("Male", 0)
+                    f_val = r.get("Female", 0)
+                    htn_rows.append([str(r["has_hypertension"]), m_val, f_val, m_val + f_val])
+                
+                st.markdown(
+                    render_modern_table_html(
+                        "🫀 Hypertension Status by Sex",
+                        ["Status", "Male", "Female", "Total"],
+                        htn_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+                # 2. BMI Classification Matrix
+                bmi_cross = pd.crosstab(df["bmi_class"], df["sex"]).reset_index()
+                bmi_rows = []
+                for _, r in bmi_cross.iterrows():
+                    m_val = r.get("Male", 0)
+                    f_val = r.get("Female", 0)
+                    bmi_rows.append([str(r["bmi_class"]), m_val, f_val, m_val + f_val])
+
+                st.markdown(
+                    render_modern_table_html(
+                        "⚖️ BMI Classification by Sex",
+                        ["BMI Classification", "Male", "Female", "Total"],
+                        bmi_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            with sex_col2:
+                # 3. Diabetes Matrix
+                diab_cross = pd.crosstab(df["has_diabetes"], df["sex"]).reset_index()
+                diab_rows = []
+                for _, r in diab_cross.iterrows():
+                    m_val = r.get("Male", 0)
+                    f_val = r.get("Female", 0)
+                    diab_rows.append([str(r["has_diabetes"]), m_val, f_val, m_val + f_val])
+
+                st.markdown(
+                    render_modern_table_html(
+                        "🩸 Diabetes Status by Sex",
+                        ["Status", "Male", "Female", "Total"],
+                        diab_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+                # 4. CVD Risk Stratification Matrix
+                risk_cross = pd.crosstab(df["risk_level"], df["sex"]).reset_index()
+                risk_rows = []
+                for _, r in risk_cross.iterrows():
+                    m_val = r.get("Male", 0)
+                    f_val = r.get("Female", 0)
+                    risk_rows.append([str(r["risk_level"]), m_val, f_val, m_val + f_val])
+
+                st.markdown(
+                    render_modern_table_html(
+                        "🎯 CVD Risk Stratification by Sex",
+                        ["CVD Risk Level", "Male", "Female", "Total"],
+                        risk_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("---")
+
+            # ---------------------------------------------------------
+            # SECTION 3: MODERN TABULATED ANALYTICS (SUMMARY TABLES)
+            # ---------------------------------------------------------
+            st.markdown("### 📊 **Categorical Summary Tables**")
+
+            summary_c1, summary_c2 = st.columns(2)
+
+            with summary_c1:
+                # CVD Risk Level Modern Table
+                cvd_summary = df["risk_level"].value_counts().reset_index()
+                cvd_summary.columns = ["Risk Level", "Count"]
+                cvd_rows = [
+                    [row["Risk Level"], row["Count"], f"{round((row['Count']/total_count)*100, 1)}%"]
+                    for _, row in cvd_summary.iterrows()
+                ]
+                st.markdown(
+                    render_modern_table_html(
+                        "🎯 CVD Risk Stratification Distribution",
+                        ["Risk Level", "Total Population", "Percentage"],
+                        cvd_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+                # Age Group Table
+                bins = [0, 19, 59, 120]
+                labels = ["Youth (<20 y/o)", "Adults (20-59 y/o)", "Elderly (60+ y/o)"]
+                df["age_demo"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+                age_demo_summary = df["age_demo"].value_counts().reset_index()
+                age_demo_summary.columns = ["Demographic Category", "Count"]
+                age_demo_rows = [
+                    [row["Demographic Category"], row["Count"], f"{round((row['Count']/total_count)*100, 1)}%"]
+                    for _, row in age_demo_summary.iterrows()
+                ]
+                st.markdown(
+                    render_modern_table_html(
+                        "👥 Demographics Age Category Summary",
+                        ["Age Group", "Total Screened", "Percentage"],
+                        age_demo_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            with summary_c2:
+                # BMI Classification Modern Table
+                bmi_summary = df["bmi_class"].value_counts().reset_index()
+                bmi_summary.columns = ["BMI Category", "Count"]
+                bmi_sum_rows = [
+                    [row["BMI Category"], row["Count"], f"{round((row['Count']/total_count)*100, 1)}%"]
+                    for _, row in bmi_summary.iterrows()
+                ]
+                st.markdown(
+                    render_modern_table_html(
+                        "⚖️ Body Mass Index (BMI) Distribution Table",
+                        ["BMI Category", "Total Count", "Percentage"],
+                        bmi_sum_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+                # Lifestyle Risk Factors Modern Table
+                lifestyle_rows = [
+                    ["Smoker (Naninigarilyo)", len(df[df["is_smoker"] == "Oo"]), f"{round((len(df[df['is_smoker'] == 'Oo'])/total_count)*100, 1)}%"],
+                    ["Binge Drinker", len(df[df["is_binge_drinker"] == "Oo"]), f"{round((len(df[df['is_binge_drinker'] == 'Oo'])/total_count)*100, 1)}%"],
+                    ["Inadequate Exercise (<150 min/wk)", len(df[df["is_exercising"] == "Hindi"]), f"{round((len(df[df['is_exercising'] == 'Hindi'])/total_count)*100, 1)}%"],
+                    ["Unhealthy Diet (<5 servings/day)", len(df[df["eats_healthy"] == "Hindi"]), f"{round((len(df[df['eats_healthy'] == 'Hindi'])/total_count)*100, 1)}%"],
+                ]
+                st.markdown(
+                    render_modern_table_html(
+                        "🚬 Lifestyle Risk Factors Summary Table",
+                        ["Lifestyle Risk Factor", "Affected Residents", "Prevalence Rate"],
+                        lifestyle_rows
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("---")
+
+            # ---------------------------------------------------------
+            # SECTION 4: CHRONIC DISEASE PATIENT ROSTERS
             # ---------------------------------------------------------
             st.markdown("### 🩺 **Diabetic and Hypertensive Resident Rosters**")
             roster_col1, roster_col2 = st.columns(2)
@@ -944,6 +1231,7 @@ elif nav_program == "Barangay Database & Analytics":
                             "last_name",
                             "first_name",
                             "age",
+                            "sex",
                             "zone",
                             "takes_diabetes_meds",
                             "diabetes_meds",
@@ -965,6 +1253,7 @@ elif nav_program == "Barangay Database & Analytics":
                             "last_name",
                             "first_name",
                             "age",
+                            "sex",
                             "zone",
                             "takes_htn_meds",
                             "hypertension_meds",
@@ -976,43 +1265,6 @@ elif nav_program == "Barangay Database & Analytics":
                     st.dataframe(htn_list, use_container_width=True)
                 else:
                     st.success("No hypertensive residents recorded.")
-
-            st.markdown("---")
-
-            col_graph1, col_graph2 = st.columns(2)
-
-            with col_graph1:
-                st.markdown("##### 🎯 **CVD Risk Level Distribution**")
-                risk_summary = df["risk_level"].value_counts().reset_index()
-                risk_summary.columns = ["Risk Level", "Count"]
-                st.bar_chart(risk_summary.set_index("Risk Level"), color="#6366f1")
-
-                st.markdown("##### ⚖️ **Body Mass Index (BMI) Categories**")
-                bmi_summary = df["bmi_class"].value_counts().reset_index()
-                bmi_summary.columns = ["BMI Category", "Count"]
-                st.bar_chart(bmi_summary.set_index("BMI Category"), color="#38bdf8")
-
-            with col_graph2:
-                st.markdown("##### 👥 **Age & Sex Distribution Visual**")
-                bins = [0, 19, 30, 45, 64, 120]
-                labels = ["< 20", "20-29", "30-44", "45-64", "65+"]
-                df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
-                age_sex_crosstab = pd.crosstab(df["age_group"], df["sex"])
-                st.area_chart(age_sex_crosstab)
-
-                st.markdown("##### 🚬 **Lifestyle Risk Factors Profile**")
-                lifestyle_data = pd.DataFrame(
-                    {
-                        "Risk Factor": ["Smoker", "Binge Drinker", "Inadequate Exercise", "Unhealthy Diet"],
-                        "Count": [
-                            len(df[df["is_smoker"] == "Oo"]),
-                            len(df[df["is_binge_drinker"] == "Oo"]),
-                            len(df[df["is_exercising"] == "Hindi"]),
-                            len(df[df["eats_healthy"] == "Hindi"]),
-                        ],
-                    }
-                )
-                st.bar_chart(lifestyle_data.set_index("Risk Factor"), color="#f43f5e")
 
     with tab_edit:
         if df.empty:
@@ -1147,7 +1399,7 @@ elif nav_program == "Barangay Database & Analytics":
                 with els2:
                     e_drinker = st.radio("Binge Drinker", yn_opts, index=0 if rec["is_binge_drinker"] == "Hindi" else 1)
                 with els3:
-                    e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["is_exercising"] == "Oo" else 1)
+                    e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
                 with els4:
                     e_healthy_diet = st.radio("Eats Healthy", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
 
