@@ -203,6 +203,11 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
+    """
+    Checks if a resident has already been assessed in the same calendar year.
+    Uses tokenized name-sorting to catch swapped/misplaced first and last names 
+    (e.g., 'Jan Art Serna' vs 'Serna Jan Art').
+    """
     if not first_name.strip() or not last_name.strip():
         return False, None
 
@@ -210,24 +215,32 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
     c = conn.cursor()
 
     query = """
-        SELECT id, assessment_date FROM assessments 
-        WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?))
-          AND LOWER(TRIM(last_name)) = LOWER(TRIM(?))
-          AND birthday = ?
+        SELECT id, assessment_date, first_name, last_name FROM assessments 
+        WHERE birthday = ?
           AND strftime('%Y', assessment_date) = ?
     """
-    params = [first_name, last_name, str(dob), str(year)]
+    params = [str(dob), str(year)]
 
     if exclude_id:
         query += " AND id != ?"
         params.append(exclude_id)
 
     c.execute(query, params)
-    result = c.fetchone()
+    records = c.fetchall()
     conn.close()
 
-    if result:
-        return True, result[1]
+    # Tokenize, lowercase, and sort the words in the input full name
+    input_tokens = sorted(f"{first_name} {last_name}".lower().split())
+
+    for r in records:
+        rec_id, ass_date, db_fn, db_ln = r
+        # Tokenize, lowercase, and sort the words in the database full name
+        db_tokens = sorted(f"{db_fn} {db_ln}".lower().split())
+        
+        # If all words match regardless of box order, flag as duplicate
+        if input_tokens == db_tokens:
+            return True, ass_date
+
     return False, None
 
 
@@ -632,7 +645,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     with col_sex:
         sex = st.radio("Sex*", ["Male", "Female", "Other"], key="p_sex")
 
-    # DOUBLE ENTRY CHECK
+    # DOUBLE ENTRY CHECK (Catches swapped names & multi-word inputs)
     assessment_year = assessment_date.year
     is_duplicate, prev_date = check_annual_duplicate(first_name, last_name, dob, assessment_year)
 
@@ -642,9 +655,8 @@ elif nav_program == "PhilPEN Risk Assessment Form":
             <div class="flag-red-card">
                 <h4>🔴 FLAGGED AS DOUBLE ENTRY (ANNUAL LIMIT EXCEEDED)</h4>
                 <p>
-                    <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) has already been assessed on 
-                    <strong>{prev_date}</strong> for calendar year <strong>{assessment_year}</strong>.<br>
-                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per calendar year</u>.</em>
+                    A record for <strong>{first_name.upper()} {last_name.upper()}</strong> (DOB: {dob}) already exists for calendar year <strong>{assessment_year}</strong> (Assessed on <strong>{prev_date}</strong>).<br>
+                    ⚠️ <em>Policy: Each resident can only undergo PhilPEN Assessment <u>once per calendar year</u>. Submission is disabled.</em>
                 </p>
             </div>
             """,
@@ -840,7 +852,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
 
     if st.button("Save Assessment Record"):
         if is_duplicate:
-            st.error(f"⛔ CANNOT SAVE RECORD: {first_name} {last_name} has already been assessed for {assessment_year}!")
+            st.error(f"⛔ CANNOT SAVE RECORD: A record for {first_name} {last_name} already exists for {assessment_year}!")
         elif completed_fields < total_required:
             st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW bago i-save!")
         else:
@@ -1099,7 +1111,7 @@ elif nav_program == "Barangay Database & Analytics":
 
                 st.markdown(
                     render_modern_table_html(
-                        "⚖️ BMI Classification by Sex",
+                        "秤 BMI Classification by Sex",
                         ["BMI Classification", "Male", "Female", "Total"],
                         bmi_rows
                     ),
