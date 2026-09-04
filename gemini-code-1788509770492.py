@@ -484,14 +484,13 @@ st.sidebar.markdown(
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Navigation Menu**")
 
-# MAIN MODULE NAVIGATION WITH PHILPEN PROGRAM & NESTED SUB-MODULES
+# MAIN MODULE NAVIGATION - LINED UP EVENLY WITHOUT SUB-PREFIX ARROWS
 main_nav = st.sidebar.radio(
     "Select Program Module:",
     [
         " Executive Dashboard",
-        "PhilPEN Program",
-        "   └ 🩺 Risk Assessment Form",
-        "   └ 📊 Database & Analytics",
+        "🩺 PhilPEN Assessment Form",
+        "📊 PhilPEN Database & Analytics",
         "Nutritional Status (0-59 mos)",
         "Expanded Program on Immunization",
         "Maternal Care",
@@ -626,7 +625,7 @@ if main_nav == " Executive Dashboard":
 # ---------------------------------------------------------
 # MODULE 2: PHILPEN PROGRAM - RISK ASSESSMENT FORM
 # ---------------------------------------------------------
-elif main_nav in ["PhilPEN Program", "   └ 🩺 Risk Assessment Form"]:
+elif main_nav == "🩺 PhilPEN Assessment Form":
     st.subheader(f"PhilPEN Risk Assessment Form — {portal_location_title}")
 
     st.markdown("**1. General & Assessor Information**")
@@ -945,7 +944,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 Risk Assessment Form"]:
 # ---------------------------------------------------------
 # MODULE 3: PHILPEN PROGRAM - DATABASE & ANALYTICS
 # ---------------------------------------------------------
-elif main_nav == "   └ 📊 Database & Analytics":
+elif main_nav == "📊 PhilPEN Database & Analytics":
     st.subheader(f"PhilPEN Database & Statistical Reports — {portal_location_title}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
