@@ -30,8 +30,10 @@ def init_db():
             waist_cm REAL,
             waist_risk TEXT,
             has_diabetes TEXT,
+            takes_diabetes_meds TEXT,
             diabetes_meds TEXT,
             has_hypertension TEXT,
+            takes_htn_meds TEXT,
             hypertension_meds TEXT,
             high_cholesterol TEXT,
             history_cvd_stroke INTEGER,
@@ -51,11 +53,16 @@ def init_db():
         )
     """
     )
-    # Ensure assessor_name column exists for legacy database files
+    
+    # Database Migration Check for Columns
     c.execute("PRAGMA table_info(assessments)")
     columns = [column[1] for column in c.fetchall()]
     if "assessor_name" not in columns:
         c.execute("ALTER TABLE assessments ADD COLUMN assessor_name TEXT")
+    if "takes_diabetes_meds" not in columns:
+        c.execute("ALTER TABLE assessments ADD COLUMN takes_diabetes_meds TEXT")
+    if "takes_htn_meds" not in columns:
+        c.execute("ALTER TABLE assessments ADD COLUMN takes_htn_meds TEXT")
 
     conn.commit()
     conn.close()
@@ -103,34 +110,32 @@ BARANGAY_CREDENTIALS = {
 }
 
 # ---------------------------------------------------------
-# COMMON MEDICATIONS LIST
+# SPECIFIC MEDICATIONS LISTS
 # ---------------------------------------------------------
-DIABETES_MEDICATIONS = [
-    "Wala / None",
-    "Metformin (500mg/850mg)",
-    "Gliclazide (30mg/80mg)",
-    "Glimepiride (2mg/4mg)",
-    "Insulin Human NPH / Regular",
-    "Sitagliptin",
-    "Empagliflozin",
-    "Iba pa (Others)",
-]
-
 HYPERTENSION_MEDICATIONS = [
-    "Wala / None",
-    "Amlodipine (5mg/10mg)",
-    "Losartan (50mg/100mg)",
-    "Metoprolol (50mg/100mg)",
-    "Captopril (25mg)",
-    "Enalapril (5mg/20mg)",
-    "Hydrochlorothiazide / HCTZ (12.5mg/25mg)",
-    "Telmisartan (40mg/80mg)",
-    "Carvedilol (6.25mg/12.5mg)",
+    "Losartan 50mg tab",
+    "Amlodipine 5mg/10mg tab",
+    "Telmisartan 40mg/80mg tab",
+    "Captopril 25mg tab",
+    "Metoprolol 50mg/100mg tab",
+    "Enalapril 5mg/20mg tab",
+    "Hydrochlorothiazide (HCTZ) 12.5mg/25mg",
+    "Carvedilol 6.25mg/12.5mg tab",
+    "Iba pa (Others)",
+]
+
+DIABETES_MEDICATIONS = [
+    "Metformin 500mg tab",
+    "Gliclazide 30mg/80mg tab",
+    "Glimepiride 2mg/4mg tab",
+    "Insulin Human NPH / Regular",
+    "Sitagliptin 50mg/100mg tab",
+    "Empagliflozin 10mg/25mg tab",
     "Iba pa (Others)",
 ]
 
 # ---------------------------------------------------------
-# HELPER CALCULATIONS & BP PARSING
+# HELPER CALCULATIONS
 # ---------------------------------------------------------
 def calculate_age(born):
     today = datetime.date.today()
@@ -238,13 +243,11 @@ st.markdown(
         font-family: 'Inter', sans-serif !important;
     }
 
-    /* Base Dark Canvas */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: #0f172a !important;
         color: #f8fafc !important;
     }
 
-    /* Standard Labels & Typography */
     p, span, label, h1, h2, h3, h4, h5, h6,
     .stMarkdown, .stMarkdown *,
     div[role="radiogroup"] label,
@@ -254,7 +257,6 @@ st.markdown(
         font-weight: 500 !important;
     }
 
-    /* Slate Input Cards */
     input, textarea, select,
     div[data-baseweb="input"] > div,
     div[data-baseweb="select"] > div {
@@ -270,7 +272,6 @@ st.markdown(
         font-weight: 600 !important;
     }
 
-    /* Datepicker Styling */
     .stDateInput input,
     div[data-baseweb="datepicker"] input,
     div[data-baseweb="datepicker"] > div {
@@ -280,7 +281,6 @@ st.markdown(
         font-weight: 600 !important;
     }
 
-    /* Menus & Popovers */
     div[data-baseweb="popover"] *,
     div[data-baseweb="menu"] *,
     ul[role="listbox"] *,
@@ -289,7 +289,6 @@ st.markdown(
         color: #f8fafc !important;
     }
 
-    /* Multiselect Badge Tags */
     span[data-baseweb="tag"] {
         background-color: #312e81 !important;
         color: #e0e7ff !important;
@@ -300,7 +299,6 @@ st.markdown(
         color: #e0e7ff !important;
     }
 
-    /* Header Banner Gradient */
     .header-banner {
         background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
         border: 1px solid #312e81;
@@ -321,7 +319,6 @@ st.markdown(
         margin-top: 4px !important;
     }
 
-    /* Dashboard KPI Containers */
     .kpi-card {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -347,7 +344,6 @@ st.markdown(
         color: #818cf8 !important;
     }
 
-    /* Flagged Alert Banner */
     .flag-red-card {
         background-color: #2a1215 !important;
         border: 1px solid #991b1b !important;
@@ -357,7 +353,6 @@ st.markdown(
         margin-bottom: 20px !important;
     }
 
-    /* Buttons */
     .stButton > button {
         background: #4f46e5 !important;
         color: #ffffff !important;
@@ -371,7 +366,6 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Navigation Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #1e293b !important;
         border-right: 1px solid #334155 !important;
@@ -437,7 +431,6 @@ if st.sidebar.button("Logout"):
     st.session_state["user_brgy"] = ""
     st.rerun()
 
-# Lead Developer Attribution
 st.sidebar.markdown(
     """
     <div class="dev-credit">
@@ -465,7 +458,6 @@ nav_program = st.sidebar.radio(
     ],
 )
 
-# Sidebar Form Progress Placeholder
 sidebar_progress_box = st.sidebar.empty()
 
 # Fetch Barangay Dataset
@@ -586,7 +578,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     st.markdown("**1. General & Assessor Information**")
     col0_a, col0_b = st.columns(2)
     with col0_a:
-        assessor_name = st.text_input("Pangalan ng BHW na Nag-assess (Assessor Name)*", key="p_assessor")
+        assessor_name = st.text_input("Pangalan ng BHW / Assessor*", key="p_assessor")
     with col0_b:
         assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
 
@@ -647,32 +639,50 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     waist_risk = classify_waist(sex, waist) if waist > 0 else "N/A"
     st.info(f"**Waist Risk Status:** {waist_risk}")
 
-    st.markdown("**3. Medical History & Specific Medications**")
-    col_diab, col_htn = st.columns(2)
+    st.markdown("**3. Medical History & Medications Screening**")
+    col_htn_sec, col_diab_sec = st.columns(2)
 
-    with col_diab:
-        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
-        diabetes_meds_selected = []
-        if has_diabetes == "Meron":
-            diabetes_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Diabetes? (Select all that apply)*",
-                options=DIABETES_MEDICATIONS,
-                default=["Metformin (500mg/850mg)"],
-                key="p_diab_meds_multi",
-            )
-        diabetes_meds_str = ", ".join(diabetes_meds_selected) if diabetes_meds_selected else "None"
-
-    with col_htn:
+    # HYPERTENSION SECTION
+    with col_htn_sec:
+        st.markdown("##### 🫀 **Hypertension Screening**")
         has_htn = st.selectbox("May ada ka ba High blood / Hypertension?*", ["Wala", "Meron", "Diri ak maaram"], key="p_htn")
+        
+        takes_htn_meds = st.radio(
+            "May iniinom ka bang gamot para sa Hypertension?*",
+            ["Wala", "Meron"],
+            key="p_htn_meds_ask"
+        )
+        
         htn_meds_selected = []
-        if has_htn == "Meron":
+        if takes_htn_meds == "Meron":
             htn_meds_selected = st.multiselect(
-                "Ano ang iniinom mong gamot para sa Hypertension? (Select all that apply)*",
+                "Ano ang iniinom mong gamot para sa Hypertension?",
                 options=HYPERTENSION_MEDICATIONS,
-                default=["Amlodipine (5mg/10mg)"],
-                key="p_htn_meds_multi",
+                default=["Losartan 50mg tab"],
+                key="p_htn_meds_multi"
             )
-        htn_meds_str = ", ".join(htn_meds_selected) if htn_meds_selected else "None"
+        htn_meds_str = ", ".join(htn_meds_selected) if htn_meds_selected else "Wala"
+
+    # DIABETES SECTION
+    with col_diab_sec:
+        st.markdown("##### 🩸 **Diabetes Screening**")
+        has_diabetes = st.selectbox("May ada ka ba Diabetes?*", ["Wala", "Meron", "Diri ak maaram"], key="p_diab")
+        
+        takes_diabetes_meds = st.radio(
+            "May gamot ka ba na iniinom para sa Diabetes?*",
+            ["Wala", "Meron"],
+            key="p_diab_meds_ask"
+        )
+        
+        diabetes_meds_selected = []
+        if takes_diabetes_meds == "Meron":
+            diabetes_meds_selected = st.multiselect(
+                "Ano ang iniinom mong gamot para sa Diabetes?",
+                options=DIABETES_MEDICATIONS,
+                default=["Metformin 500mg tab"],
+                key="p_diab_meds_multi"
+            )
+        diabetes_meds_str = ", ".join(diabetes_meds_selected) if diabetes_meds_selected else "Wala"
 
     cholesterol = st.selectbox("Hitaas ba an iyo cholesterol?*", ["Hindi", "Oo", "Diri ak maaram"], key="p_chol")
 
@@ -718,7 +728,7 @@ elif nav_program == "PhilPEN Risk Assessment Form":
         key="p_action",
     )
 
-    # Calculate Sidebar Progress Tracker
+    # Progress Calculation
     required_checks = [
         bool(assessor_name.strip()),
         bool(last_name.strip()),
@@ -735,7 +745,6 @@ elif nav_program == "PhilPEN Risk Assessment Form":
     total_required = len(required_checks)
     progress_pct = int((completed_fields / total_required) * 100)
 
-    # Sidebar Progress Bar Render
     with sidebar_progress_box.container():
         st.markdown("---")
         st.markdown("📋 **Form Completion Progress:**")
@@ -755,11 +764,11 @@ elif nav_program == "PhilPEN Risk Assessment Form":
                 INSERT INTO assessments (
                     assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay,
                     birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
-                    waist_risk, has_diabetes, diabetes_meds, has_hypertension, hypertension_meds,
-                    high_cholesterol, history_cvd_stroke, history_heart_attack, history_kidney,
-                    family_history, bp_1, bp_2, bp_3, bp_avg, is_smoker, is_binge_drinker,
-                    is_exercising, eats_healthy, risk_level, action_taken
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    waist_risk, has_diabetes, takes_diabetes_meds, diabetes_meds, has_hypertension, 
+                    takes_htn_meds, hypertension_meds, high_cholesterol, history_cvd_stroke, 
+                    history_heart_attack, history_kidney, family_history, bp_1, bp_2, bp_3, 
+                    bp_avg, is_smoker, is_binge_drinker, is_exercising, eats_healthy, risk_level, action_taken
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
                 (
                     str(assessment_date),
@@ -779,8 +788,10 @@ elif nav_program == "PhilPEN Risk Assessment Form":
                     waist,
                     waist_risk,
                     has_diabetes,
+                    takes_diabetes_meds,
                     diabetes_meds_str,
                     has_htn,
+                    takes_htn_meds,
                     htn_meds_str,
                     cholesterol,
                     int(cvd_stroke),
@@ -856,7 +867,7 @@ elif nav_program == "Barangay Database & Analytics":
             st.markdown("---")
 
             # ---------------------------------------------------------
-            # SPECIFIC LIST OF DIABETIC & HYPERTENSIVE PATIENTS
+            # ROSTER OF DIABETIC & HYPERTENSIVE PATIENTS
             # ---------------------------------------------------------
             st.markdown("### 🩺 **Diabetic and Hypertensive Resident Rosters**")
             roster_col1, roster_col2 = st.columns(2)
@@ -871,6 +882,7 @@ elif nav_program == "Barangay Database & Analytics":
                             "first_name",
                             "age",
                             "zone",
+                            "takes_diabetes_meds",
                             "diabetes_meds",
                             "bp_avg",
                             "action_taken",
@@ -891,6 +903,7 @@ elif nav_program == "Barangay Database & Analytics":
                             "first_name",
                             "age",
                             "zone",
+                            "takes_htn_meds",
                             "hypertension_meds",
                             "bp_avg",
                             "action_taken",
@@ -951,7 +964,7 @@ elif nav_program == "Barangay Database & Analytics":
             rec = df[df["id"] == record_id].iloc[0]
 
             st.markdown("---")
-            st.markdown(f"#### ✏️ **Complete Record Field Edit — Resident ID #{record_id}**")
+            st.markdown(f"#### ✏️ **Edit Resident Record — ID #{record_id}**")
 
             with st.form("edit_full_resident_form"):
                 st.markdown("**1. General & Assessor Information**")
@@ -998,27 +1011,45 @@ elif nav_program == "Barangay Database & Analytics":
                 with ewaist_col:
                     e_waist = st.number_input("Waist (cm)", value=float(rec["waist_cm"]), min_value=0.0, step=0.5)
 
-                st.markdown("**3. Medical History & Medications**")
-                ediab_col, ehtn_col = st.columns(2)
-
-                with ediab_col:
-                    diab_options = ["Wala", "Meron", "Diri ak maaram"]
-                    diab_idx = diab_options.index(rec["has_diabetes"]) if rec["has_diabetes"] in diab_options else 0
-                    e_has_diabetes = st.selectbox("May Diabetes?", diab_options, index=diab_idx)
-
-                    curr_diab_meds = [m.strip() for m in str(rec["diabetes_meds"]).split(",") if m.strip()]
-                    e_diab_meds = st.multiselect(
-                        "Diabetes Medications", options=DIABETES_MEDICATIONS, default=[m for m in curr_diab_meds if m in DIABETES_MEDICATIONS]
-                    )
+                st.markdown("**3. Medical History & Specific Medications**")
+                ehtn_col, ediab_col = st.columns(2)
 
                 with ehtn_col:
                     htn_options = ["Wala", "Meron", "Diri ak maaram"]
                     htn_idx = htn_options.index(rec["has_hypertension"]) if rec["has_hypertension"] in htn_options else 0
                     e_has_htn = st.selectbox("May Hypertension?", htn_options, index=htn_idx)
 
+                    curr_takes_htn = str(rec.get("takes_htn_meds", "Wala"))
+                    e_takes_htn_meds = st.radio(
+                        "May iniinom ka bang gamot para sa Hypertension?",
+                        ["Wala", "Meron"],
+                        index=1 if curr_takes_htn == "Meron" else 0
+                    )
+
                     curr_htn_meds = [m.strip() for m in str(rec["hypertension_meds"]).split(",") if m.strip()]
                     e_htn_meds = st.multiselect(
-                        "Hypertension Medications", options=HYPERTENSION_MEDICATIONS, default=[m for m in curr_htn_meds if m in HYPERTENSION_MEDICATIONS]
+                        "Hypertension Medications", 
+                        options=HYPERTENSION_MEDICATIONS, 
+                        default=[m for m in curr_htn_meds if m in HYPERTENSION_MEDICATIONS]
+                    )
+
+                with ediab_col:
+                    diab_options = ["Wala", "Meron", "Diri ak maaram"]
+                    diab_idx = diab_options.index(rec["has_diabetes"]) if rec["has_diabetes"] in diab_options else 0
+                    e_has_diabetes = st.selectbox("May Diabetes?", diab_options, index=diab_idx)
+
+                    curr_takes_diab = str(rec.get("takes_diabetes_meds", "Wala"))
+                    e_takes_diabetes_meds = st.radio(
+                        "May gamot ka ba na iniinom para sa Diabetes?",
+                        ["Wala", "Meron"],
+                        index=1 if curr_takes_diab == "Meron" else 0
+                    )
+
+                    curr_diab_meds = [m.strip() for m in str(rec["diabetes_meds"]).split(",") if m.strip()]
+                    e_diab_meds = st.multiselect(
+                        "Diabetes Medications", 
+                        options=DIABETES_MEDICATIONS, 
+                        default=[m for m in curr_diab_meds if m in DIABETES_MEDICATIONS]
                     )
 
                 chol_options = ["Hindi", "Oo", "Diri ak maaram"]
@@ -1078,8 +1109,8 @@ elif nav_program == "Barangay Database & Analytics":
                     new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
 
                     new_risk_level, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
-                    e_diab_meds_str = ", ".join(e_diab_meds) if e_diab_meds else "None"
-                    e_htn_meds_str = ", ".join(e_htn_meds) if e_htn_meds else "None"
+                    e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
+                    e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
 
                     conn = sqlite3.connect("philpen_palo.db")
                     c = conn.cursor()
@@ -1088,11 +1119,11 @@ elif nav_program == "Barangay Database & Analytics":
                         UPDATE assessments SET
                             assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?,
                             birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
-                            waist_cm=?, waist_risk=?, has_diabetes=?, diabetes_meds=?, has_hypertension=?,
-                            hypertension_meds=?, high_cholesterol=?, history_cvd_stroke=?, history_heart_attack=?,
-                            history_kidney=?, family_history=?, bp_1=?, bp_2=?, bp_3=?, bp_avg=?,
-                            is_smoker=?, is_binge_drinker=?, is_exercising=?, eats_healthy=?,
-                            risk_level=?, action_taken=?
+                            waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
+                            has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
+                            history_cvd_stroke=?, history_heart_attack=?, history_kidney=?, family_history=?, 
+                            bp_1=?, bp_2=?, bp_3=?, bp_avg=?, is_smoker=?, is_binge_drinker=?, is_exercising=?, 
+                            eats_healthy=?, risk_level=?, action_taken=?
                         WHERE id=?
                     """,
                         (
@@ -1112,8 +1143,10 @@ elif nav_program == "Barangay Database & Analytics":
                             e_waist,
                             new_waist_risk,
                             e_has_diabetes,
+                            e_takes_diabetes_meds,
                             e_diab_meds_str,
                             e_has_htn,
+                            e_takes_htn_meds,
                             e_htn_meds_str,
                             e_cholesterol,
                             int(e_cvd_stroke),
