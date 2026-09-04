@@ -141,49 +141,55 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
 
 
 # ---------------------------------------------------------
-# STREAMLIT CONFIG & CUSTOM STYLING
+# STREAMLIT CONFIG & ACCESSIBLE STYLING
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="e-FHSIS: Palo, Leyte", layout="wide"
 )
 
-# Custom CSS for Pure White Background and Yellow/Red Accent Banner
+# Custom High-Contrast CSS
 st.markdown(
     """
     <style>
-    /* Main App Background - Pure White */
+    /* Force main app background to solid white and main text to dark slate */
     .stApp {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
+        color: #1e293b !important;
     }
     
-    /* Header Container - Red & Yellow Banner */
+    /* Ensure form labels and input texts are highly legible */
+    label, .stMarkdown, p, h1, h2, h3, h4, span {
+        color: #0f172a !important;
+    }
+
+    /* High-Contrast Professional Navy Header Banner */
     .header-container {
-        background: linear-gradient(90deg, #d90429 0%, #ffb703 100%);
-        padding: 20px 25px;
+        background-color: #0f2c59;
+        border-bottom: 5px solid #d90429;
+        padding: 22px 20px;
         border-radius: 8px;
-        color: white;
         text-align: center;
         margin-bottom: 25px;
-        box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.06);
     }
     .header-container h1 {
         color: #ffffff !important;
         margin: 0;
         font-weight: 700;
-        font-size: 2.1rem;
+        font-size: 2.0rem;
     }
     .header-container p {
-        color: #fff3bf;
+        color: #ffca28 !important;
         margin: 6px 0 0 0;
-        font-size: 1.1rem;
-        font-weight: 500;
+        font-size: 1.05rem;
+        font-weight: 600;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# System Title Banner
+# High-Contrast System Title Banner
 st.markdown(
     """
     <div class="header-container">
