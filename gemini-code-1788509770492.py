@@ -1306,20 +1306,62 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             roster_col1, roster_col2 = st.columns(2)
 
             with roster_col1:
-                st.markdown("#### 🩸 **List of Diabetes Mellitus Residents**")
+                st.markdown("#### 🩸 **List of Residents with Diabetes Mellitus**")
                 if not diab_df.empty:
                     diab_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(diab_df[diab_cols], use_container_width=True)
                 else:
-                    st.success("No Diabetes Mellitus residents recorded.")
+                    st.success("No Residents with Diabetes Mellitus recorded.")
 
             with roster_col2:
-                st.markdown("#### 🫀 **List of Hypertension Residents**")
+                st.markdown("#### 🫀 **List of Residents with Hypertension**")
                 if not htn_df.empty:
                     htn_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(htn_df[htn_cols], use_container_width=True)
                 else:
-                    st.success("No Hypertension residents recorded.")
+                    st.success("No Residents with Hypertension recorded.")
+
+            st.markdown("---")
+
+            # ---------------------------------------------------------
+            # SECTION 5: BHW / ASSESSOR SCREENING TALLY SHEET
+            # ---------------------------------------------------------
+            st.markdown("### 👩‍⚕️ **BHW / Assessor Assessment Tally Sheet**")
+            
+            if "assessor_name" in df.columns:
+                bhw_counts = df["assessor_name"].fillna("Unassigned / Not Specified").value_counts().reset_index()
+                bhw_counts.columns = ["Name of BHW / Assessor", "Number of Residents Assessed"]
+                
+                bhw_rows = [
+                    [
+                        row["Name of BHW / Assessor"] if str(row["Name of BHW / Assessor"]).strip() != "" else "Unassigned / Not Specified",
+                        row["Number of Residents Assessed"]
+                    ]
+                    for _, row in bhw_counts.iterrows()
+                ]
+
+                bhw_col1, bhw_col2 = st.columns([2, 1])
+                with bhw_col1:
+                    st.markdown(
+                        render_modern_table_html(
+                            "Tally of Residents Assessed per BHW / Assessor",
+                            ["Name of BHW / Assessor", "Number of Residents Assessed"],
+                            bhw_rows
+                        ),
+                        unsafe_allow_html=True
+                    )
+                with bhw_col2:
+                    st.markdown(
+                        """
+                        <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
+                            <h5 style="color: #818cf8; margin-top: 0;">📌 BHW Tally Summary</h5>
+                            <p style="font-size: 0.85rem; color: #94a3b8;">
+                                Ipinapakita sa talahanayang ito ang kabuuang bilang ng mga residenteng na-assess ng bawat Barangay Health Worker (BHW) o Assessor.
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
 
     with tab_edit:
         if df.empty:
