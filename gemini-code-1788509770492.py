@@ -387,7 +387,7 @@ st.markdown(
         margin-bottom: 20px !important;
     }
 
-    /* Streamlit buttons left alignment for color indicator boxes */
+    /* Streamlit buttons strict left alignment for penny-sized color indicator boxes */
     .stButton > button {
         display: flex !important;
         justify-content: flex-start !important;
@@ -395,8 +395,16 @@ st.markdown(
         text-align: left !important;
         width: 100% !important;
         font-size: 0.95rem !important;
-        padding: 10px 16px !important;
+        padding: 12px 18px !important;
         border-radius: 8px !important;
+    }
+
+    /* Force all child elements (p, div, span) inside stButton to align strictly to the left */
+    .stButton > button * {
+        justify-content: flex-start !important;
+        text-align: left !important;
+        display: flex !important;
+        align-items: center !important;
     }
 
     /* Selected option box highlight styling */
@@ -839,46 +847,46 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     st.markdown("##### 🎯 **Action Taken: Click Option Box to Select**")
     st.caption("Click any colored option box below to select the Action Taken (Only 1 action can be chosen):")
 
-    # FULL-WIDTH CLICKABLE OPTION BOXES WITH LEFT-ALIGNED PENNY-SIZED COLOR INDICATORS
+    # FULL-WIDTH CLICKABLE OPTION BOXES WITH LEFT-ALIGNED PENNY-SIZED DOTS (12px)
     indicator_options = [
         {
             "label": "Low Risk (<5%)",
-            "circle": "🟢",
+            "dot": "🟢",
             "action": "Advise sa diet at lifestyle (Counselling)",
             "key": "btn_act_low_v",
             "desc": "Advise sa diet at lifestyle (Counselling)",
         },
         {
             "label": "Mild Risk (5% to <10%)",
-            "circle": "🟡",
+            "dot": "🟡",
             "action": "Ni-refer kay midwife para sa kumpletong assessment",
             "key": "btn_act_mild_v",
             "desc": "Ni-refer kay midwife para sa kumpletong assessment",
         },
         {
             "label": "Medium Risk (10% to <20%)",
-            "circle": "🟠",
+            "dot": "🟠",
             "action": "Ni-refer sa RHU Physician",
             "key": "btn_act_med_v",
             "desc": "Ni-refer sa RHU Physician",
         },
         {
             "label": "High Risk (20% to <30%)",
-            "circle": "🔴",
+            "dot": "🔴",
             "action": "Urgent referral sa Ospital / Physician",
             "key": "btn_act_high_v",
             "desc": "Urgent referral sa Ospital / Physician",
         },
         {
             "label": "Very High Risk (≥30%)",
-            "circle": "🔴",
+            "dot": "🔴",
             "action": "Urgent referral sa Ospital / Physician",
             "key": "btn_act_vhigh_v",
             "desc": "Urgent referral sa Ospital / Physician",
         },
         {
             "label": "Tumanggi / Patient Refusal",
-            "circle": "⚪",
+            "dot": "⚪",
             "action": "Nirefer sa RHU/Ospital pero tumanggi",
             "key": "btn_act_refused_v",
             "desc": "Nirefer sa RHU/Ospital pero tumanggi",
@@ -887,7 +895,8 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     for opt in indicator_options:
         is_active = (st.session_state.get("p_selected_action") == opt["action"])
-        button_label = f"{opt['circle']}  {opt['label']} — {opt['desc']}"
+        # Format text with penny-sized dot strictly on left
+        button_label = f"{opt['dot']}  {opt['label']} — {opt['desc']}"
         btn_type = "primary" if is_active else "secondary"
 
         if st.button(button_label, key=opt["key"], use_container_width=True, type=btn_type):
