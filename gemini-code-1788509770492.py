@@ -239,15 +239,15 @@ def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
 
 
 def render_modern_table_html(title, headers, rows):
-    header_html = "".join([f'<th style="padding: 10px; border-bottom: 2px solid #334155; color: #818cf8; font-weight: 600;">{h}</th>' for h in headers])
+    header_html = "".join([f'<th style="padding: 10px; border-bottom: 2px solid #334155; color: #818cf8; font-weight: 600; text-align: left;">{h}</th>' for h in headers])
     rows_html = ""
     for row in rows:
-        cells = "".join([f'<td style="padding: 10px; border-bottom: 1px solid #334155;">{cell}</td>' for cell in row])
+        cells = "".join([f'<td style="padding: 10px; border-bottom: 1px solid #334155; text-align: left;">{cell}</td>' for cell in row])
         rows_html += f"<tr>{cells}</tr>"
 
     html = f"""
     <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-        <h5 style="color: #f8fafc; font-weight: 700; margin-top: 0; margin-bottom: 12px;">{title}</h5>
+        <h5 style="color: #f8fafc; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: left;">{title}</h5>
         <table style="width: 100%; border-collapse: collapse; text-align: left; color: #f8fafc; font-size: 0.9rem;">
             <thead>
                 <tr style="background-color: #0f172a;">
@@ -275,6 +275,7 @@ st.markdown(
 
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif !important;
+        text-align: left !important;
     }
 
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
@@ -289,6 +290,7 @@ st.markdown(
     [data-testid="stWidgetLabel"] * {
         color: #f8fafc !important;
         font-weight: 500 !important;
+        text-align: left !important;
     }
 
     input, textarea, select,
@@ -298,6 +300,7 @@ st.markdown(
         color: #f8fafc !important;
         border: 1px solid #334155 !important;
         border-radius: 8px !important;
+        text-align: left !important;
     }
 
     input, textarea {
@@ -321,6 +324,7 @@ st.markdown(
     div[role="dialog"] * {
         background-color: #1e293b !important;
         color: #f8fafc !important;
+        text-align: left !important;
     }
 
     span[data-baseweb="tag"] {
@@ -340,17 +344,20 @@ st.markdown(
         border-radius: 12px;
         color: #ffffff !important;
         margin-bottom: 25px;
+        text-align: left !important;
     }
     .header-banner h1 {
         color: #f8fafc !important;
         font-size: 1.8rem !important;
         font-weight: 700 !important;
         margin: 0 !important;
+        text-align: left !important;
     }
     .header-banner p {
         color: #94a3b8 !important;
         font-size: 0.95rem !important;
         margin-top: 4px !important;
+        text-align: left !important;
     }
 
     .kpi-card {
@@ -358,6 +365,7 @@ st.markdown(
         border: 1px solid #334155 !important;
         border-radius: 10px !important;
         padding: 18px !important;
+        text-align: left !important;
     }
     .kpi-label {
         font-size: 0.8rem !important;
@@ -365,17 +373,20 @@ st.markdown(
         color: #94a3b8 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.05em !important;
+        text-align: left !important;
     }
     .kpi-value {
         font-size: 1.8rem !important;
         font-weight: 700 !important;
         color: #f8fafc !important;
         margin-top: 4px !important;
+        text-align: left !important;
     }
     .kpi-subtext {
         font-size: 0.8rem !important;
         font-weight: 500 !important;
         color: #818cf8 !important;
+        text-align: left !important;
     }
 
     .flag-red-card {
@@ -385,9 +396,10 @@ st.markdown(
         padding: 16px !important;
         border-radius: 8px !important;
         margin-bottom: 20px !important;
+        text-align: left !important;
     }
 
-    /* Streamlit buttons strict left alignment for penny-sized color indicator boxes */
+    /* Streamlit buttons strict left alignment & container structure */
     .stButton > button {
         display: flex !important;
         justify-content: flex-start !important;
@@ -401,10 +413,26 @@ st.markdown(
 
     /* Force all child elements (p, div, span) inside stButton to align strictly to the left */
     .stButton > button * {
-        justify-content: flex-start !important;
         text-align: left !important;
-        display: flex !important;
-        align-items: center !important;
+        justify-content: flex-start !important;
+    }
+
+    .stButton > button p {
+        display: block !important;
+        text-align: left !important;
+        font-size: 0.98rem !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    /* ENLARGE COLOR INDICATOR TO PENNY SIZE (~28px) STRICTLY ON THE LEFT */
+    .stButton > button p::first-letter {
+        font-size: 1.8rem !important; /* Penny size scale (~28px diameter) */
+        line-height: 1 !important;
+        margin-right: 10px !important;
+        vertical-align: -2px !important;
+        display: inline-block !important;
     }
 
     /* Selected option box highlight styling */
@@ -431,6 +459,7 @@ st.markdown(
     section[data-testid="stSidebar"] {
         background-color: #1e293b !important;
         border-right: 1px solid #334155 !important;
+        text-align: left !important;
     }
 
     .dev-credit {
@@ -439,6 +468,7 @@ st.markdown(
         border-top: 1px solid #334155;
         padding-top: 10px;
         margin-top: 10px;
+        text-align: left !important;
     }
     .dev-credit strong {
         color: #818cf8;
@@ -821,7 +851,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     
     st.markdown(
         f"""
-        <div style="background-color: {risk_color}; color: {text_color}; padding: 14px 20px; border-radius: 8px; font-weight: bold; margin-bottom: 15px;">
+        <div style="background-color: {risk_color}; color: {text_color}; padding: 14px 20px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: left;">
             <span style="font-size: 1.15rem; color: {text_color} !important;">WHO/ISH Risk Assessment: <strong>{risk_level} Risk ({risk_pct})</strong></span><br>
             <span style="font-size: 0.95rem; color: {text_color} !important;">💡 Recommended Action: <strong>{recommended_action}</strong></span>
         </div>
@@ -847,7 +877,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     st.markdown("##### 🎯 **Action Taken: Click Option Box to Select**")
     st.caption("Click any colored option box below to select the Action Taken (Only 1 action can be chosen):")
 
-    # FULL-WIDTH CLICKABLE OPTION BOXES WITH LEFT-ALIGNED PENNY-SIZED DOTS (12px)
+    # FULL-WIDTH CLICKABLE OPTION BOXES WITH PENNY-SIZED DOTS (1.8rem / ~28px) STRICTLY ON LEFT
     indicator_options = [
         {
             "label": "Low Risk (<5%)",
@@ -895,8 +925,8 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     for opt in indicator_options:
         is_active = (st.session_state.get("p_selected_action") == opt["action"])
-        # Format text with penny-sized dot strictly on left
-        button_label = f"{opt['dot']}  {opt['label']} — {opt['desc']}"
+        # Format label with dot first; CSS p::first-letter enlarges dot to Penny Size (~28px)
+        button_label = f"{opt['dot']} {opt['label']} — {opt['desc']}"
         btn_type = "primary" if is_active else "secondary"
 
         if st.button(button_label, key=opt["key"], use_container_width=True, type=btn_type):
@@ -907,7 +937,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     st.markdown(
         f"""
-        <div style="background-color: #1e293b; border: 2px solid #6366f1; border-radius: 8px; padding: 12px 18px; margin-top: 10px; margin-bottom: 20px;">
+        <div style="background-color: #1e293b; border: 2px solid #6366f1; border-radius: 8px; padding: 12px 18px; margin-top: 10px; margin-bottom: 20px; text-align: left;">
             <span style="color: #818cf8; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Selected Action Taken:</span><br>
             <strong style="color: #f8fafc; font-size: 1.1rem;">{action}</strong>
         </div>
@@ -1151,7 +1181,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             
             st.markdown(
                 f"""
-                <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 18px; margin-bottom: 18px; display: inline-block;">
+                <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 18px; margin-bottom: 18px; display: inline-block; text-align: left;">
                     <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Current Total Assessed (Palo, Leyte):</span>
                     <span style="color: #38bdf8; font-size: 1.3rem; font-weight: 700; margin-left: 10px;">{total_count}</span>
                 </div>
@@ -1190,9 +1220,9 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             with m_col2:
                 st.markdown(
                     f"""
-                    <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
-                        <h5 style="color: #818cf8; margin-top: 0;">📌 Month Tracking Notes</h5>
-                        <p style="font-size: 0.85rem; color: #94a3b8;">
+                    <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px; text-align: left;">
+                        <h5 style="color: #818cf8; margin-top: 0; text-align: left;">📌 Month Tracking Notes</h5>
+                        <p style="font-size: 0.85rem; color: #94a3b8; text-align: left;">
                             Ipinapakita sa talahanayan ang buwanang dami ng PhilPEN risk screening assessments na naisagawa (Kasarian: Lalaki at Babae; Edad: Adults 20-59 y/o at Elderly 60+ y/o) para sa buong taon.
                         </p>
                     </div>
@@ -1423,9 +1453,9 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                 with bhw_col2:
                     st.markdown(
                         """
-                        <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px;">
-                            <h5 style="color: #818cf8; margin-top: 0;">📌 BHW Tally Summary</h5>
-                            <p style="font-size: 0.85rem; color: #94a3b8;">
+                        <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px; text-align: left;">
+                            <h5 style="color: #818cf8; margin-top: 0; text-align: left;">📌 BHW Tally Summary</h5>
+                            <p style="font-size: 0.85rem; color: #94a3b8; text-align: left;">
                                 Ipinapakita sa talahanayang ito ang kabuuang bilang ng mga residenteng na-assess ng bawat Barangay Health Worker (BHW) o Assessor.
                             </p>
                         </div>
