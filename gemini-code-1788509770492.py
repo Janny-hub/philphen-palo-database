@@ -817,31 +817,31 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Low</td>
                     <td style="padding: 10px;">&lt;5%</td>
-                    <td style="padding: 10px; background-color: #16a34a; color: #ffffff; font-weight: bold; text-align: center;">Green</td>
+                    <td style="padding: 10px; background-color: #16a34a; color: #ffffff; font-weight: bold; text-align: center;">Green Circle</td>
                     <td style="padding: 10px;">Advise sa diet at lifestyle (Counselling)</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Mild</td>
                     <td style="padding: 10px;">5% to &lt;10%</td>
-                    <td style="padding: 10px; background-color: #eab308; color: #000000; font-weight: bold; text-align: center;">Yellow</td>
+                    <td style="padding: 10px; background-color: #eab308; color: #000000; font-weight: bold; text-align: center;">Yellow Circle</td>
                     <td style="padding: 10px;">Ni-refer kay midwife para sa kumpletong assessment</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Medium</td>
                     <td style="padding: 10px;">10% to &lt;20%</td>
-                    <td style="padding: 10px; background-color: #ea580c; color: #ffffff; font-weight: bold; text-align: center;">Orange</td>
+                    <td style="padding: 10px; background-color: #ea580c; color: #ffffff; font-weight: bold; text-align: center;">Orange Circle</td>
                     <td style="padding: 10px;">Ni-refer sa RHU Physician</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">High</td>
                     <td style="padding: 10px;">20% to &lt;30%</td>
-                    <td style="padding: 10px; background-color: #dc2626; color: #ffffff; font-weight: bold; text-align: center;">Red</td>
+                    <td style="padding: 10px; background-color: #dc2626; color: #ffffff; font-weight: bold; text-align: center;">Red Circle</td>
                     <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
                 </tr>
                 <tr style="color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Very High</td>
                     <td style="padding: 10px;">&ge;30%</td>
-                    <td style="padding: 10px; background-color: #7f1d1d; color: #ffffff; font-weight: bold; text-align: center;">Deep Red</td>
+                    <td style="padding: 10px; background-color: #7f1d1d; color: #ffffff; font-weight: bold; text-align: center;">Deep Red Circle</td>
                     <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
                 </tr>
             </tbody>
@@ -865,29 +865,84 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         st.session_state["p_selected_action"] = auto_default_action
         st.session_state["p_last_risk"] = risk_level
 
-    st.markdown("##### 🎯 **Click Color Indicator to Select Action Taken**")
-    st.caption("Click any color indicator button below to set or switch the Action Taken:")
+    st.markdown("##### 🎯 **Action Taken: Click Color Indicator Penny Circle**")
+    st.caption("Click any penny-sized circular color indicator below to set or switch the Action Taken:")
 
-    btn_c1, btn_c2, btn_c3, btn_c4, btn_c5, btn_c6 = st.columns(6)
+    # COLUMNARRANGEMENT FOR COLOR INDICATORS (PENNY SIZED CIRCLES)
+    indicator_options = [
+        {
+            "label": "Low Risk (<5%)",
+            "color": "#16a34a",
+            "text_color": "#ffffff",
+            "action": "Advise sa diet at lifestyle (Counselling)",
+            "key": "btn_act_low_v",
+            "desc": "Advise sa diet at lifestyle (Counselling)",
+        },
+        {
+            "label": "Mild Risk (5% to <10%)",
+            "color": "#eab308",
+            "text_color": "#000000",
+            "action": "Ni-refer kay midwife para sa kumpletong assessment",
+            "key": "btn_act_mild_v",
+            "desc": "Ni-refer kay midwife para sa kumpletong assessment",
+        },
+        {
+            "label": "Medium Risk (10% to <20%)",
+            "color": "#ea580c",
+            "text_color": "#ffffff",
+            "action": "Ni-refer sa RHU Physician",
+            "key": "btn_act_med_v",
+            "desc": "Ni-refer sa RHU Physician",
+        },
+        {
+            "label": "High Risk (20% to <30%)",
+            "color": "#dc2626",
+            "text_color": "#ffffff",
+            "action": "Urgent referral sa Ospital / Physician",
+            "key": "btn_act_high_v",
+            "desc": "Urgent referral sa Ospital / Physician",
+        },
+        {
+            "label": "Very High Risk (≥30%)",
+            "color": "#7f1d1d",
+            "text_color": "#ffffff",
+            "action": "Urgent referral sa Ospital / Physician",
+            "key": "btn_act_vhigh_v",
+            "desc": "Urgent referral sa Ospital / Physician (Deep Red Circle)",
+        },
+        {
+            "label": "Tumanggi / Patient Refusal",
+            "color": "#475569",
+            "text_color": "#ffffff",
+            "action": "Nirefer sa RHU/Ospital pero tumanggi",
+            "key": "btn_act_refused_v",
+            "desc": "Nirefer sa RHU/Ospital pero tumanggi",
+        },
+    ]
 
-    with btn_c1:
-        if st.button("🟢 Low Risk\n(Green)", key="btn_act_low", use_container_width=True):
-            st.session_state["p_selected_action"] = "Advise sa diet at lifestyle (Counselling)"
-    with btn_c2:
-        if st.button("🟡 Mild Risk\n(Yellow)", key="btn_act_mild", use_container_width=True):
-            st.session_state["p_selected_action"] = "Ni-refer kay midwife para sa kumpletong assessment"
-    with btn_c3:
-        if st.button("🟠 Medium Risk\n(Orange)", key="btn_act_med", use_container_width=True):
-            st.session_state["p_selected_action"] = "Ni-refer sa RHU Physician"
-    with btn_c4:
-        if st.button("🔴 High Risk\n(Red)", key="btn_act_high", use_container_width=True):
-            st.session_state["p_selected_action"] = "Urgent referral sa Ospital / Physician"
-    with btn_c5:
-        if st.button("🍷 Very High\n(Deep Red)", key="btn_act_vhigh", use_container_width=True):
-            st.session_state["p_selected_action"] = "Urgent referral sa Ospital / Physician"
-    with btn_c6:
-        if st.button("⚠️ Refused\n(Tumanggi)", key="btn_act_refused", use_container_width=True):
-            st.session_state["p_selected_action"] = "Nirefer sa RHU/Ospital pero tumanggi"
+    for opt in indicator_options:
+        icol_btn, icol_card = st.columns([0.15, 0.85])
+        with icol_btn:
+            if st.button("🔴", key=opt["key"], help=f"Click circle to select {opt['label']}"):
+                st.session_state["p_selected_action"] = opt["action"]
+        with icol_card:
+            is_active = (st.session_state.get("p_selected_action") == opt["action"])
+            border_style = "2px solid #818cf8" if is_active else "1px solid #334155"
+            bg_style = "#312e81" if is_active else "#1e293b"
+
+            st.markdown(
+                f"""
+                <div style="display: flex; align-items: center; background-color: {bg_style}; border: {border_style}; border-radius: 10px; padding: 10px 16px; margin-bottom: 8px;">
+                    <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background-color: {opt['color']}; border: 3px solid #ffffff; margin-right: 14px; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: {opt['text_color']};">
+                    </div>
+                    <div>
+                        <span style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">{opt['label']}</span><br>
+                        <span style="font-size: 0.85rem; color: #94a3b8;">{opt['desc']}</span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     action = st.session_state.get("p_selected_action", auto_default_action)
 
@@ -1338,7 +1393,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             st.markdown("---")
 
             # ---------------------------------------------------------
-            # SECTION 4: CHRONIC DISEASE PATIENT ROSTERS
+            # SECTION 4: CHRONIC DISEASE PATIENT ROSTERS WITH DOWNLOAD
             # ---------------------------------------------------------
             st.markdown("### 🩺 **Diabetes Mellitus and Hypertension Resident Rosters**")
             roster_col1, roster_col2 = st.columns(2)
@@ -1346,6 +1401,15 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             with roster_col1:
                 st.markdown("#### 🩸 **List of Residents with Diabetes Mellitus**")
                 if not diab_df.empty:
+                    # FULL INFORMATION DOWNLOAD FOR DIABETES
+                    diab_full_csv = diab_df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        label="📥 Download Diabetes Roster (All Patient Information CSV)",
+                        data=diab_full_csv,
+                        file_name=f"Diabetes_Mellitus_Roster_Full_{st.session_state['user_brgy']}.csv",
+                        mime="text/csv",
+                        key="btn_dl_diab_full",
+                    )
                     diab_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(diab_df[diab_cols], use_container_width=True)
                 else:
@@ -1354,6 +1418,15 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             with roster_col2:
                 st.markdown("#### 🫀 **List of Residents with Hypertension**")
                 if not htn_df.empty:
+                    # FULL INFORMATION DOWNLOAD FOR HYPERTENSION
+                    htn_full_csv = htn_df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        label="📥 Download Hypertension Roster (All Patient Information CSV)",
+                        data=htn_full_csv,
+                        file_name=f"Hypertension_Roster_Full_{st.session_state['user_brgy']}.csv",
+                        mime="text/csv",
+                        key="btn_dl_htn_full",
+                    )
                     htn_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(htn_df[htn_cols], use_container_width=True)
                 else:
