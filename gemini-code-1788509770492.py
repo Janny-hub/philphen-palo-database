@@ -801,55 +801,6 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         unsafe_allow_html=True,
     )
 
-    st.markdown("##### 📌 **BHW Guide: Action Needed To Be Taken**")
-    st.markdown(
-        """
-        <table style="width:100%; border-collapse: collapse; margin-bottom: 20px; background-color: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155;">
-            <thead>
-                <tr style="background-color: #334155; color: #f8fafc; text-align: left;">
-                    <th style="padding: 10px;">Risk Level</th>
-                    <th style="padding: 10px;">Percentage of Risk</th>
-                    <th style="padding: 10px; text-align: center;">Color Indicator</th>
-                    <th style="padding: 10px;">Action Needed To Be Taken</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
-                    <td style="padding: 10px; font-weight: 600;">Low</td>
-                    <td style="padding: 10px;">&lt;5%</td>
-                    <td style="padding: 10px; background-color: #16a34a; color: #ffffff; font-weight: bold; text-align: center;">Green Circle</td>
-                    <td style="padding: 10px;">Advise sa diet at lifestyle (Counselling)</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
-                    <td style="padding: 10px; font-weight: 600;">Mild</td>
-                    <td style="padding: 10px;">5% to &lt;10%</td>
-                    <td style="padding: 10px; background-color: #eab308; color: #000000; font-weight: bold; text-align: center;">Yellow Circle</td>
-                    <td style="padding: 10px;">Ni-refer kay midwife para sa kumpletong assessment</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
-                    <td style="padding: 10px; font-weight: 600;">Medium</td>
-                    <td style="padding: 10px;">10% to &lt;20%</td>
-                    <td style="padding: 10px; background-color: #ea580c; color: #ffffff; font-weight: bold; text-align: center;">Orange Circle</td>
-                    <td style="padding: 10px;">Ni-refer sa RHU Physician</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
-                    <td style="padding: 10px; font-weight: 600;">High</td>
-                    <td style="padding: 10px;">20% to &lt;30%</td>
-                    <td style="padding: 10px; background-color: #dc2626; color: #ffffff; font-weight: bold; text-align: center;">Red Circle</td>
-                    <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
-                </tr>
-                <tr style="color: #f8fafc;">
-                    <td style="padding: 10px; font-weight: 600;">Very High</td>
-                    <td style="padding: 10px;">&ge;30%</td>
-                    <td style="padding: 10px; background-color: #7f1d1d; color: #ffffff; font-weight: bold; text-align: center;">Deep Red Circle</td>
-                    <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
-                </tr>
-            </tbody>
-        </table>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # MAP CALCULATED CVD RISK TO DEFAULT ACTION TAKEN
     action_mapping = {
         "Low": "Advise sa diet at lifestyle (Counselling)",
@@ -865,55 +816,49 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         st.session_state["p_selected_action"] = auto_default_action
         st.session_state["p_last_risk"] = risk_level
 
-    st.markdown("##### 🎯 **Action Taken: Click Color Indicator Penny Circle**")
-    st.caption("Click any penny-sized circular color indicator below to set or switch the Action Taken:")
+    st.markdown("##### 🎯 **Action Taken: Click Option Box to Select**")
+    st.caption("Click any colored option box below to select the Action Taken (Only 1 action can be chosen):")
 
-    # COLUMNARRANGEMENT FOR COLOR INDICATORS (PENNY SIZED CIRCLES)
+    # FULL-WIDTH CLICKABLE OPTION BOXES (SINGLE CHOICE SELECTION)
     indicator_options = [
         {
             "label": "Low Risk (<5%)",
-            "color": "#16a34a",
-            "text_color": "#ffffff",
+            "circle": "🟢",
             "action": "Advise sa diet at lifestyle (Counselling)",
             "key": "btn_act_low_v",
             "desc": "Advise sa diet at lifestyle (Counselling)",
         },
         {
             "label": "Mild Risk (5% to <10%)",
-            "color": "#eab308",
-            "text_color": "#000000",
+            "circle": "🟡",
             "action": "Ni-refer kay midwife para sa kumpletong assessment",
             "key": "btn_act_mild_v",
             "desc": "Ni-refer kay midwife para sa kumpletong assessment",
         },
         {
             "label": "Medium Risk (10% to <20%)",
-            "color": "#ea580c",
-            "text_color": "#ffffff",
+            "circle": "🟠",
             "action": "Ni-refer sa RHU Physician",
             "key": "btn_act_med_v",
             "desc": "Ni-refer sa RHU Physician",
         },
         {
             "label": "High Risk (20% to <30%)",
-            "color": "#dc2626",
-            "text_color": "#ffffff",
+            "circle": "🔴",
             "action": "Urgent referral sa Ospital / Physician",
             "key": "btn_act_high_v",
             "desc": "Urgent referral sa Ospital / Physician",
         },
         {
             "label": "Very High Risk (≥30%)",
-            "color": "#7f1d1d",
-            "text_color": "#ffffff",
+            "circle": "🔴",
             "action": "Urgent referral sa Ospital / Physician",
             "key": "btn_act_vhigh_v",
-            "desc": "Urgent referral sa Ospital / Physician (Deep Red Circle)",
+            "desc": "Urgent referral sa Ospital / Physician",
         },
         {
             "label": "Tumanggi / Patient Refusal",
-            "color": "#475569",
-            "text_color": "#ffffff",
+            "circle": "⚪",
             "action": "Nirefer sa RHU/Ospital pero tumanggi",
             "key": "btn_act_refused_v",
             "desc": "Nirefer sa RHU/Ospital pero tumanggi",
@@ -921,28 +866,13 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     ]
 
     for opt in indicator_options:
-        icol_btn, icol_card = st.columns([0.15, 0.85])
-        with icol_btn:
-            if st.button("🔴", key=opt["key"], help=f"Click circle to select {opt['label']}"):
-                st.session_state["p_selected_action"] = opt["action"]
-        with icol_card:
-            is_active = (st.session_state.get("p_selected_action") == opt["action"])
-            border_style = "2px solid #818cf8" if is_active else "1px solid #334155"
-            bg_style = "#312e81" if is_active else "#1e293b"
+        is_active = (st.session_state.get("p_selected_action") == opt["action"])
+        status_tag = "✅ [SELECTED] " if is_active else ""
+        button_label = f"{status_tag}{opt['circle']} {opt['label']} — {opt['desc']}"
 
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; background-color: {bg_style}; border: {border_style}; border-radius: 10px; padding: 10px 16px; margin-bottom: 8px;">
-                    <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 50%; background-color: {opt['color']}; border: 3px solid #ffffff; margin-right: 14px; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: {opt['text_color']};">
-                    </div>
-                    <div>
-                        <span style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">{opt['label']}</span><br>
-                        <span style="font-size: 0.85rem; color: #94a3b8;">{opt['desc']}</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        if st.button(button_label, key=opt["key"], use_container_width=True):
+            st.session_state["p_selected_action"] = opt["action"]
+            st.rerun()
 
     action = st.session_state.get("p_selected_action", auto_default_action)
 
