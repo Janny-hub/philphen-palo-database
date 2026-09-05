@@ -387,16 +387,36 @@ st.markdown(
         margin-bottom: 20px !important;
     }
 
+    /* Streamlit buttons left alignment for color indicator boxes */
     .stButton > button {
-        background: #4f46e5 !important;
-        color: #ffffff !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        text-align: left !important;
+        width: 100% !important;
+        font-size: 0.95rem !important;
+        padding: 10px 16px !important;
         border-radius: 8px !important;
-        border: none !important;
-        font-weight: 600 !important;
-        padding: 8px 20px !important;
     }
-    .stButton > button:hover {
-        background: #4338ca !important;
+
+    /* Selected option box highlight styling */
+    .stButton > button[kind="primary"] {
+        background: #312e81 !important;
+        border: 2px solid #6366f1 !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
+        font-weight: 600 !important;
+    }
+
+    /* Unselected option box styling */
+    .stButton > button[kind="secondary"] {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        color: #f8fafc !important;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background: #334155 !important;
+        border-color: #475569 !important;
         color: #ffffff !important;
     }
 
@@ -819,7 +839,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     st.markdown("##### 🎯 **Action Taken: Click Option Box to Select**")
     st.caption("Click any colored option box below to select the Action Taken (Only 1 action can be chosen):")
 
-    # FULL-WIDTH CLICKABLE OPTION BOXES (SINGLE CHOICE SELECTION)
+    # FULL-WIDTH CLICKABLE OPTION BOXES WITH LEFT-ALIGNED PENNY-SIZED COLOR INDICATORS
     indicator_options = [
         {
             "label": "Low Risk (<5%)",
@@ -867,10 +887,10 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     for opt in indicator_options:
         is_active = (st.session_state.get("p_selected_action") == opt["action"])
-        status_tag = "✅ [SELECTED] " if is_active else ""
-        button_label = f"{status_tag}{opt['circle']} {opt['label']} — {opt['desc']}"
+        button_label = f"{opt['circle']}  {opt['label']} — {opt['desc']}"
+        btn_type = "primary" if is_active else "secondary"
 
-        if st.button(button_label, key=opt["key"], use_container_width=True):
+        if st.button(button_label, key=opt["key"], use_container_width=True, type=btn_type):
             st.session_state["p_selected_action"] = opt["action"]
             st.rerun()
 
