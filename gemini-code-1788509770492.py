@@ -266,7 +266,7 @@ def render_modern_table_html(title, headers, rows):
 # ---------------------------------------------------------
 # STREAMLIT CONFIG & LOW-GLARE DARK CHARCOAL STYLING
 # ---------------------------------------------------------
-st.set_page_config(page_title="e-FHSIS | Palo, Leyte Portal", layout="wide", page_icon="🏥")
+st.set_page_config(page_title="TEKI Portal", layout="wide", page_icon="🏥")
 
 st.markdown(
     """
@@ -424,8 +424,8 @@ st.markdown(
 st.markdown(
     """
     <div class="header-banner">
-        <h1>e-FHSIS Healthcare Portal</h1>
-        <p>Rural Health Unit Data Management & PhilPEN Analytics — Palo, Leyte</p>
+        <h1>TEKI: Technology-Enabled Knowledge and Information System</h1>
+        <p><i>An Integrated Digital Platform for Barangay Health Program Recording and Reporting</i></p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -439,7 +439,7 @@ if "authenticated" not in st.session_state:
     st.session_state["user_brgy"] = ""
 
 if not st.session_state["authenticated"]:
-    st.subheader("Palo Health Portal Login")
+    st.subheader("TEKI Portal Login")
 
     with st.form("login_form"):
         username = st.selectbox("Select Account / Barangay (Username)", list(BARANGAY_CREDENTIALS.keys()))
@@ -480,7 +480,7 @@ st.sidebar.markdown(
         <span style="color: #f8fafc; font-weight: 600;">Lesterel C. Kidit, RM, RN, MD</span><br>
         <span style="color: #f8fafc; font-weight: 600;">Nova Nizza B. Dacayanan, RM, RN, MD</span><br>
         <span style="color: #f8fafc; font-weight: 600;">James O. Peconcillo, RM, RN, MD</span><br>
-        <span style="color: #818cf8; font-size: 0.8rem;">University of the Philippines-Manila SHS Interns</span>
+        <span style="color: #818cf8; font-size: 0.8rem;">University of the Philippines Manila-SHS</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -1367,227 +1367,244 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
         if df.empty:
             st.info("No records available to edit.")
         else:
-            resident_options = {
-                f"ID {row['id']}: [{row['barangay']}] {row['last_name']}, {row['first_name']} ({row['assessment_date']})": row["id"]
-                for _, row in df.iterrows()
-            }
-            selected_label = st.selectbox("Select Resident Record to Edit:", list(resident_options.keys()))
-            record_id = resident_options[selected_label]
-            rec = df[df["id"] == record_id].iloc[0]
+            st.markdown("#### 🔍 **Search & Select Resident Record**")
+            search_term = st.text_input("🔎 Search Resident by Full Name, Last Name, or First Name:", key="edit_search_term")
+            
+            if search_term.strip():
+                # Filter records by matching full name tokens or substrings
+                matching_mask = df.apply(
+                    lambda r: search_term.lower() in f"{r['first_name']} {r['middle_name'] or ''} {r['last_name']}".lower() or 
+                              search_term.lower() in f"{r['last_name']}, {r['first_name']}".lower(),
+                    axis=1
+                )
+                search_df = df[matching_mask]
+            else:
+                search_df = df
 
-            st.markdown("---")
-            st.markdown(f"#### ✏️ **Edit Resident Record — ID #{record_id}**")
-
-            with st.form("edit_full_resident_form"):
-                st.markdown("**1. General & Assessor Information**")
-                e_assessor_name = st.text_input("Pangalan ng BHW / Assessor", value=str(rec.get("assessor_name", "")))
-
-                ec1, ec2, ec3 = st.columns(3)
-
-                try:
-                    curr_ass_date = datetime.datetime.strptime(str(rec["assessment_date"]), "%Y-%m-%d").date()
-                except ValueError:
-                    curr_ass_date = datetime.date.today()
-
-                try:
-                    curr_dob = datetime.datetime.strptime(str(rec["birthday"]), "%Y-%m-%d").date()
-                except ValueError:
-                    curr_dob = datetime.date(1990, 1, 1)
-
-                with ec1:
-                    e_assessment_date = st.date_input("Assessment Date", value=curr_ass_date)
-                    e_last_name = st.text_input("Apilido (Last Name)", value=str(rec["last_name"]))
-                with ec2:
-                    e_first_name = st.text_input("Pangalan (Given Name)", value=str(rec["first_name"]))
-                    e_middle_name = st.text_input("Gitnang Pangalan (Middle Name)", value=str(rec["middle_name"] or ""))
-                with ec3:
-                    e_zone = st.text_input("Zone / Purok", value=str(rec["zone"]))
-                    if is_admin:
-                        curr_brgy_val = str(rec["barangay"])
-                        e_brgy_idx = ONLY_BARANGAYS.index(curr_brgy_val) if curr_brgy_val in ONLY_BARANGAYS else 0
-                        e_barangay = st.selectbox("Barangay", ONLY_BARANGAYS, index=e_brgy_idx)
-                    else:
-                        e_barangay = st.text_input("Barangay", value=str(rec["barangay"]), disabled=True)
-
-                ec_dob, ec_sex = st.columns(2)
-                with ec_dob:
-                    e_dob = st.date_input("Birthday", value=curr_dob, min_value=datetime.date(1920, 1, 1))
-                    e_age = calculate_age(e_dob)
-                    st.caption(f"Calculated Age: {e_age} years old")
-                with ec_sex:
-                    sex_options = ["Male", "Female", "Other"]
-                    sex_idx = sex_options.index(rec["sex"]) if rec["sex"] in sex_options else 0
-                    e_sex = st.radio("Sex", sex_options, index=sex_idx)
-
-                st.markdown("**2. Body Measurements**")
-                ew_col, eh_col, ewaist_col = st.columns(3)
-                with ew_col:
-                    e_weight = st.number_input("Weight (kg)", value=float(rec["weight_kg"]), min_value=0.0, step=0.5)
-                with eh_col:
-                    e_height = st.number_input("Height (cm)", value=float(rec["height_cm"]), min_value=0.0, step=0.5)
-                with ewaist_col:
-                    e_waist = st.number_input("Waist (cm)", value=float(rec["waist_cm"]), min_value=0.0, step=0.5)
-
-                st.markdown("**3. Medical History & Specific Medications**")
-                ehtn_col, ediab_col = st.columns(2)
-
-                with ehtn_col:
-                    htn_options = ["Wala", "Meron", "Diri ak maaram"]
-                    htn_idx = htn_options.index(rec["has_hypertension"]) if rec["has_hypertension"] in htn_options else 0
-                    e_has_htn = st.selectbox("May Hypertension?", htn_options, index=htn_idx)
-
-                    curr_takes_htn = str(rec.get("takes_htn_meds", "Wala"))
-                    e_takes_htn_meds = st.radio(
-                        "May iniinom ka bang gamot para sa Hypertension?",
-                        ["Wala", "Meron"],
-                        index=1 if curr_takes_htn == "Meron" else 0
-                    )
-
-                    curr_htn_meds = [m.strip() for m in str(rec["hypertension_meds"]).split(",") if m.strip()]
-                    e_htn_meds = st.multiselect(
-                        "Hypertension Medications", 
-                        options=HYPERTENSION_MEDICATIONS, 
-                        default=[m for m in curr_htn_meds if m in HYPERTENSION_MEDICATIONS]
-                    )
-
-                with ediab_col:
-                    diab_options = ["Wala", "Meron", "Diri ak maaram"]
-                    diab_idx = diab_options.index(rec["has_diabetes"]) if rec["has_diabetes"] in diab_options else 0
-                    e_has_diabetes = st.selectbox("May Diabetes Mellitus?", diab_options, index=diab_idx)
-
-                    curr_takes_diab = str(rec.get("takes_diabetes_meds", "Wala"))
-                    e_takes_diabetes_meds = st.radio(
-                        "May gamot ka ba na iniinom para sa Diabetes Mellitus?",
-                        ["Wala", "Meron"],
-                        index=1 if curr_takes_diab == "Meron" else 0
-                    )
-
-                    curr_diab_meds = [m.strip() for m in str(rec["diabetes_meds"]).split(",") if m.strip()]
-                    e_diab_meds = st.multiselect(
-                        "Diabetes Mellitus Medications", 
-                        options=DIABETES_MEDICATIONS, 
-                        default=[m for m in curr_diab_meds if m in DIABETES_MEDICATIONS]
-                    )
-
-                chol_options = ["Hindi", "Oo", "Diri ak maaram"]
-                chol_idx = chol_options.index(rec["high_cholesterol"]) if rec["high_cholesterol"] in chol_options else 0
-                e_cholesterol = st.selectbox("High Cholesterol?", chol_options, index=chol_idx)
-
-                st.write("Medical Diagnoses:")
-                e_cvd_stroke = st.checkbox("History of CVD (Stroke)", value=bool(rec["history_cvd_stroke"]))
-                e_heart_attack = st.checkbox("History of Heart attack", value=bool(rec["history_heart_attack"]))
-                e_kidney_prob = st.checkbox("Chronic Kidney Problem", value=bool(rec["history_kidney"]))
-
-                fam_options = ["Wala", "Meron"]
-                fam_idx = fam_options.index(rec["family_history"]) if rec["family_history"] in fam_options else 0
-                e_fam_history = st.selectbox("Family History of CVD", fam_options, index=fam_idx)
-
-                st.markdown("**4. Blood Pressure Screening (3 Readings)**")
-                ebp1_col, ebp2_col, ebp3_col = st.columns(3)
-                with ebp1_col:
-                    e_bp1 = st.text_input("BP Reading 1", value=str(rec["bp_1"]))
-                with ebp2_col:
-                    e_bp2 = st.text_input("BP Reading 2", value=str(rec["bp_2"] or ""))
-                with ebp3_col:
-                    e_bp3 = st.text_input("BP Reading 3", value=str(rec["bp_3"] or ""))
-
-                st.markdown("**5. Lifestyle Factors & Action Taken**")
-                els1, els2, els3, els4 = st.columns(4)
-                yn_opts = ["Hindi", "Oo"]
-                ny_opts = ["Oo", "Hindi"]
-
-                with els1:
-                    e_smoker = st.radio("Smoker", yn_opts, index=0 if rec["is_smoker"] == "Hindi" else 1)
-                with els2:
-                    e_drinker = st.radio("Binge Drinker", yn_opts, index=0 if rec["is_binge_drinker"] == "Hindi" else 1)
-                with els3:
-                    e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
-                with els4:
-                    e_healthy_diet = st.radio("Eats Healthy", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
-
-                action_list = [
-                    "Advise sa diet at lifestyle (Counselling)",
-                    "Ni-refer kay midwife para sa kumpletong assessment",
-                    "Ni-refer sa RHU Physician",
-                    "Urgent referral sa Ospital / Physician",
-                    "Nirefer sa RHU/Ospital pero tumanggi",
-                ]
-                act_idx = action_list.index(rec["action_taken"]) if rec["action_taken"] in action_list else 0
-                e_action = st.selectbox("Action Taken", action_list, index=act_idx)
+            if search_df.empty:
+                st.warning("No matching resident records found for the given search term.")
+            else:
+                resident_options = {
+                    f"ID {row['id']}: [{row['barangay']}] {row['last_name']}, {row['first_name']} {row['middle_name'] or ''} (DOB: {row['birthday']})": row["id"]
+                    for _, row in search_df.iterrows()
+                }
+                selected_label = st.selectbox("Select Resident Record to Edit:", list(resident_options.keys()))
+                record_id = resident_options[selected_label]
+                rec = df[df["id"] == record_id].iloc[0]
 
                 st.markdown("---")
-                save_changes = st.form_submit_button("💾 Save All Changes to Resident Record")
+                st.markdown(f"#### ✏️ **Edit Resident Record — ID #{record_id}**")
 
-                if save_changes:
-                    new_bmi = calculate_bmi(e_weight, e_height)
-                    new_bmi_cat = classify_bmi(new_bmi)
-                    new_waist_risk = classify_waist(e_sex, e_waist)
+                with st.form("edit_full_resident_form"):
+                    st.markdown("**1. General & Assessor Information**")
+                    e_assessor_name = st.text_input("Pangalan ng BHW / Assessor", value=str(rec.get("assessor_name", "")))
 
-                    new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
+                    ec1, ec2, ec3 = st.columns(3)
 
-                    new_risk_level, _, _, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
-                    e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
-                    e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
+                    try:
+                        curr_ass_date = datetime.datetime.strptime(str(rec["assessment_date"]), "%Y-%m-%d").date()
+                    except ValueError:
+                        curr_ass_date = datetime.date.today()
 
-                    conn = sqlite3.connect("philpen_palo.db")
-                    c = conn.cursor()
-                    c.execute(
-                        """
-                        UPDATE assessments SET
-                            assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?,
-                            birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
-                            waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
-                            has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
-                            history_cvd_stroke=?, history_heart_attack=?, history_kidney=?, family_history=?, 
-                            bp_1=?, bp_2=?, bp_3=?, bp_avg=?, is_smoker=?, is_binge_drinker=?, is_exercising=?, 
-                            eats_healthy=?, risk_level=?, action_taken=?
-                        WHERE id=?
-                    """,
-                        (
-                            str(e_assessment_date),
-                            e_assessor_name,
-                            e_last_name,
-                            e_first_name,
-                            e_middle_name,
-                            e_zone,
-                            e_barangay,
-                            str(e_dob),
-                            e_age,
-                            e_sex,
-                            e_weight,
-                            e_height,
-                            new_bmi,
-                            new_bmi_cat,
-                            e_waist,
-                            new_waist_risk,
-                            e_has_diabetes,
-                            e_takes_diabetes_meds,
-                            e_diab_meds_str,
-                            e_has_htn,
-                            e_takes_htn_meds,
-                            e_htn_meds_str,
-                            e_cholesterol,
-                            int(e_cvd_stroke),
-                            int(e_heart_attack),
-                            int(e_kidney_prob),
-                            e_fam_history,
-                            e_bp1,
-                            e_bp2,
-                            e_bp3,
-                            new_bp_avg,
-                            e_smoker,
-                            e_drinker,
-                            e_exercise,
-                            e_healthy_diet,
-                            new_risk_level,
-                            e_action,
-                            record_id,
-                        ),
-                    )
-                    conn.commit()
-                    conn.close()
-                    st.success("All record details updated successfully!")
-                    st.rerun()
+                    try:
+                        curr_dob = datetime.datetime.strptime(str(rec["birthday"]), "%Y-%m-%d").date()
+                    except ValueError:
+                        curr_dob = datetime.date(1990, 1, 1)
+
+                    with ec1:
+                        e_assessment_date = st.date_input("Assessment Date", value=curr_ass_date)
+                        e_last_name = st.text_input("Apilido (Last Name)", value=str(rec["last_name"]))
+                    with ec2:
+                        e_first_name = st.text_input("Pangalan (Given Name)", value=str(rec["first_name"]))
+                        e_middle_name = st.text_input("Gitnang Pangalan (Middle Name)", value=str(rec["middle_name"] or ""))
+                    with ec3:
+                        e_zone = st.text_input("Zone / Purok", value=str(rec["zone"]))
+                        if is_admin:
+                            curr_brgy_val = str(rec["barangay"])
+                            e_brgy_idx = ONLY_BARANGAYS.index(curr_brgy_val) if curr_brgy_val in ONLY_BARANGAYS else 0
+                            e_barangay = st.selectbox("Barangay", ONLY_BARANGAYS, index=e_brgy_idx)
+                        else:
+                            e_barangay = st.text_input("Barangay", value=str(rec["barangay"]), disabled=True)
+
+                    ec_dob, ec_sex = st.columns(2)
+                    with ec_dob:
+                        e_dob = st.date_input("Birthday", value=curr_dob, min_value=datetime.date(1920, 1, 1))
+                        e_age = calculate_age(e_dob)
+                        st.caption(f"Calculated Age: {e_age} years old")
+                    with ec_sex:
+                        sex_options = ["Male", "Female", "Other"]
+                        sex_idx = sex_options.index(rec["sex"]) if rec["sex"] in sex_options else 0
+                        e_sex = st.radio("Sex", sex_options, index=sex_idx)
+
+                    st.markdown("**2. Body Measurements**")
+                    ew_col, eh_col, ewaist_col = st.columns(3)
+                    with ew_col:
+                        e_weight = st.number_input("Weight (kg)", value=float(rec["weight_kg"]), min_value=0.0, step=0.5)
+                    with eh_col:
+                        e_height = st.number_input("Height (cm)", value=float(rec["height_cm"]), min_value=0.0, step=0.5)
+                    with ewaist_col:
+                        e_waist = st.number_input("Waist (cm)", value=float(rec["waist_cm"]), min_value=0.0, step=0.5)
+
+                    st.markdown("**3. Medical History & Specific Medications**")
+                    ehtn_col, ediab_col = st.columns(2)
+
+                    with ehtn_col:
+                        htn_options = ["Wala", "Meron", "Diri ak maaram"]
+                        htn_idx = htn_options.index(rec["has_hypertension"]) if rec["has_hypertension"] in htn_options else 0
+                        e_has_htn = st.selectbox("May Hypertension?", htn_options, index=htn_idx)
+
+                        curr_takes_htn = str(rec.get("takes_htn_meds", "Wala"))
+                        e_takes_htn_meds = st.radio(
+                            "May iniinom ka bang gamot para sa Hypertension?",
+                            ["Wala", "Meron"],
+                            index=1 if curr_takes_htn == "Meron" else 0
+                        )
+
+                        curr_htn_meds = [m.strip() for m in str(rec["hypertension_meds"]).split(",") if m.strip()]
+                        e_htn_meds = st.multiselect(
+                            "Hypertension Medications", 
+                            options=HYPERTENSION_MEDICATIONS, 
+                            default=[m for m in curr_htn_meds if m in HYPERTENSION_MEDICATIONS]
+                        )
+
+                    with ediab_col:
+                        diab_options = ["Wala", "Meron", "Diri ak maaram"]
+                        diab_idx = diab_options.index(rec["has_diabetes"]) if rec["has_diabetes"] in diab_options else 0
+                        e_has_diabetes = st.selectbox("May Diabetes Mellitus?", diab_options, index=diab_idx)
+
+                        curr_takes_diab = str(rec.get("takes_diabetes_meds", "Wala"))
+                        e_takes_diabetes_meds = st.radio(
+                            "May gamot ka ba na iniinom para sa Diabetes Mellitus?",
+                            ["Wala", "Meron"],
+                            index=1 if curr_takes_diab == "Meron" else 0
+                        )
+
+                        curr_diab_meds = [m.strip() for m in str(rec["diabetes_meds"]).split(",") if m.strip()]
+                        e_diab_meds = st.multiselect(
+                            "Diabetes Mellitus Medications", 
+                            options=DIABETES_MEDICATIONS, 
+                            default=[m for m in curr_diab_meds if m in DIABETES_MEDICATIONS]
+                        )
+
+                    chol_options = ["Hindi", "Oo", "Diri ak maaram"]
+                    chol_idx = chol_options.index(rec["high_cholesterol"]) if rec["high_cholesterol"] in chol_options else 0
+                    e_cholesterol = st.selectbox("High Cholesterol?", chol_options, index=chol_idx)
+
+                    st.write("Medical Diagnoses:")
+                    e_cvd_stroke = st.checkbox("History of CVD (Stroke)", value=bool(rec["history_cvd_stroke"]))
+                    e_heart_attack = st.checkbox("History of Heart attack", value=bool(rec["history_heart_attack"]))
+                    e_kidney_prob = st.checkbox("Chronic Kidney Problem", value=bool(rec["history_kidney"]))
+
+                    fam_options = ["Wala", "Meron"]
+                    fam_idx = fam_options.index(rec["family_history"]) if rec["family_history"] in fam_options else 0
+                    e_fam_history = st.selectbox("Family History of CVD", fam_options, index=fam_idx)
+
+                    st.markdown("**4. Blood Pressure Screening (3 Readings)**")
+                    ebp1_col, ebp2_col, ebp3_col = st.columns(3)
+                    with ebp1_col:
+                        e_bp1 = st.text_input("BP Reading 1", value=str(rec["bp_1"]))
+                    with ebp2_col:
+                        e_bp2 = st.text_input("BP Reading 2", value=str(rec["bp_2"] or ""))
+                    with ebp3_col:
+                        e_bp3 = st.text_input("BP Reading 3", value=str(rec["bp_3"] or ""))
+
+                    st.markdown("**5. Lifestyle Factors & Action Taken**")
+                    els1, els2, els3, els4 = st.columns(4)
+                    yn_opts = ["Hindi", "Oo"]
+                    ny_opts = ["Oo", "Hindi"]
+
+                    with els1:
+                        e_smoker = st.radio("Smoker", yn_opts, index=0 if rec["is_smoker"] == "Hindi" else 1)
+                    with els2:
+                        e_drinker = st.radio("Binge Drinker", yn_opts, index=0 if rec["is_binge_drinker"] == "Hindi" else 1)
+                    with els3:
+                        e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["is_exercising"] == "Oo" else 1)
+                    with els4:
+                        e_healthy_diet = st.radio("Eats Healthy", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
+
+                    action_list = [
+                        "Advise sa diet at lifestyle (Counselling)",
+                        "Ni-refer kay midwife para sa kumpletong assessment",
+                        "Ni-refer sa RHU Physician",
+                        "Urgent referral sa Ospital / Physician",
+                        "Nirefer sa RHU/Ospital pero tumanggi",
+                    ]
+                    act_idx = action_list.index(rec["action_taken"]) if rec["action_taken"] in action_list else 0
+                    e_action = st.selectbox("Action Taken", action_list, index=act_idx)
+
+                    st.markdown("---")
+                    save_changes = st.form_submit_button("💾 Save All Changes to Resident Record")
+
+                    if save_changes:
+                        new_bmi = calculate_bmi(e_weight, e_height)
+                        new_bmi_cat = classify_bmi(new_bmi)
+                        new_waist_risk = classify_waist(e_sex, e_waist)
+
+                        new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
+
+                        new_risk_level, _, _, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
+                        e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
+                        e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
+
+                        conn = sqlite3.connect("philpen_palo.db")
+                        c = conn.cursor()
+                        c.execute(
+                            """
+                            UPDATE assessments SET
+                                assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?,
+                                birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
+                                waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
+                                has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
+                                history_cvd_stroke=?, history_heart_attack=?, history_kidney=?, family_history=?, 
+                                bp_1=?, bp_2=?, bp_3=?, bp_avg=?, is_smoker=?, is_binge_drinker=?, is_exercising=?, 
+                                eats_healthy=?, risk_level=?, action_taken=?
+                            WHERE id=?
+                        """,
+                            (
+                                str(e_assessment_date),
+                                e_assessor_name,
+                                e_last_name,
+                                e_first_name,
+                                e_middle_name,
+                                e_zone,
+                                e_barangay,
+                                str(e_dob),
+                                e_age,
+                                e_sex,
+                                e_weight,
+                                e_height,
+                                new_bmi,
+                                new_bmi_cat,
+                                e_waist,
+                                new_waist_risk,
+                                e_has_diabetes,
+                                e_takes_diabetes_meds,
+                                e_diab_meds_str,
+                                e_has_htn,
+                                e_takes_htn_meds,
+                                e_htn_meds_str,
+                                e_cholesterol,
+                                int(e_cvd_stroke),
+                                int(e_heart_attack),
+                                int(e_kidney_prob),
+                                e_fam_history,
+                                e_bp1,
+                                e_bp2,
+                                e_bp3,
+                                new_bp_avg,
+                                e_smoker,
+                                e_drinker,
+                                e_exercise,
+                                e_healthy_diet,
+                                new_risk_level,
+                                e_action,
+                                record_id,
+                            ),
+                        )
+                        conn.commit()
+                        conn.close()
+                        st.success("All record details updated successfully! Analytics dashboard updated.")
+                        st.rerun()
 
 # ---------------------------------------------------------
 # OTHER HEALTH PROGRAM MODULES
