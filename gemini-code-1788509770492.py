@@ -818,31 +818,31 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
                     <td style="padding: 10px; font-weight: 600;">Low</td>
                     <td style="padding: 10px;">&lt;5%</td>
                     <td style="padding: 10px; background-color: #16a34a; color: #ffffff; font-weight: bold; text-align: center;">Green</td>
-                    <td style="padding: 10px;">Counselling only</td>
+                    <td style="padding: 10px;">Advise sa diet at lifestyle (Counselling)</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Mild</td>
                     <td style="padding: 10px;">5% to &lt;10%</td>
                     <td style="padding: 10px; background-color: #eab308; color: #000000; font-weight: bold; text-align: center;">Yellow</td>
-                    <td style="padding: 10px;">Refer to Midwife</td>
+                    <td style="padding: 10px;">Ni-refer kay midwife para sa kumpletong assessment</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Medium</td>
                     <td style="padding: 10px;">10% to &lt;20%</td>
                     <td style="padding: 10px; background-color: #ea580c; color: #ffffff; font-weight: bold; text-align: center;">Orange</td>
-                    <td style="padding: 10px;">Refer to RHU Physician</td>
+                    <td style="padding: 10px;">Ni-refer sa RHU Physician</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #334155; color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">High</td>
                     <td style="padding: 10px;">20% to &lt;30%</td>
                     <td style="padding: 10px; background-color: #dc2626; color: #ffffff; font-weight: bold; text-align: center;">Red</td>
-                    <td style="padding: 10px;">Urgent referral to Physician/ Hospital</td>
+                    <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
                 </tr>
                 <tr style="color: #f8fafc;">
                     <td style="padding: 10px; font-weight: 600;">Very High</td>
                     <td style="padding: 10px;">&ge;30%</td>
                     <td style="padding: 10px; background-color: #7f1d1d; color: #ffffff; font-weight: bold; text-align: center;">Deep Red</td>
-                    <td style="padding: 10px;">Urgent referral to Physician/ Hospital</td>
+                    <td style="padding: 10px;">Urgent referral sa Ospital / Physician</td>
                 </tr>
             </tbody>
         </table>
@@ -850,17 +850,55 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         unsafe_allow_html=True,
     )
 
-    action = st.selectbox(
-        "Ano ang ginawa? / Action Taken*",
-        [
-            "-- Pumili ng Aksyon --",
-            "Advise sa diet at lifestyle (Counselling)",
-            "Ni-refer kay midwife para sa kumpletong assessment",
-            "Ni-refer sa RHU Physician",
-            "Urgent referral sa Ospital / Physician",
-            "Nirefer sa RHU/Ospital pero tumanggi",
-        ],
-        key="p_action",
+    # MAP CALCULATED CVD RISK TO DEFAULT ACTION TAKEN
+    action_mapping = {
+        "Low": "Advise sa diet at lifestyle (Counselling)",
+        "Mild": "Ni-refer kay midwife para sa kumpletong assessment",
+        "Medium": "Ni-refer sa RHU Physician",
+        "High": "Urgent referral sa Ospital / Physician",
+        "Very High": "Urgent referral sa Ospital / Physician",
+    }
+    auto_default_action = action_mapping.get(risk_level, "Advise sa diet at lifestyle (Counselling)")
+
+    # AUTO-SYNC ACTION WITH CALCULATED RISK LEVEL UNLESS OVERRIDDEN
+    if "p_selected_action" not in st.session_state or st.session_state.get("p_last_risk") != risk_level:
+        st.session_state["p_selected_action"] = auto_default_action
+        st.session_state["p_last_risk"] = risk_level
+
+    st.markdown("##### 🎯 **Click Color Indicator to Select Action Taken**")
+    st.caption("Click any color indicator button below to set or switch the Action Taken:")
+
+    btn_c1, btn_c2, btn_c3, btn_c4, btn_c5, btn_c6 = st.columns(6)
+
+    with btn_c1:
+        if st.button("🟢 Low Risk\n(Green)", key="btn_act_low", use_container_width=True):
+            st.session_state["p_selected_action"] = "Advise sa diet at lifestyle (Counselling)"
+    with btn_c2:
+        if st.button("🟡 Mild Risk\n(Yellow)", key="btn_act_mild", use_container_width=True):
+            st.session_state["p_selected_action"] = "Ni-refer kay midwife para sa kumpletong assessment"
+    with btn_c3:
+        if st.button("🟠 Medium Risk\n(Orange)", key="btn_act_med", use_container_width=True):
+            st.session_state["p_selected_action"] = "Ni-refer sa RHU Physician"
+    with btn_c4:
+        if st.button("🔴 High Risk\n(Red)", key="btn_act_high", use_container_width=True):
+            st.session_state["p_selected_action"] = "Urgent referral sa Ospital / Physician"
+    with btn_c5:
+        if st.button("🍷 Very High\n(Deep Red)", key="btn_act_vhigh", use_container_width=True):
+            st.session_state["p_selected_action"] = "Urgent referral sa Ospital / Physician"
+    with btn_c6:
+        if st.button("⚠️ Refused\n(Tumanggi)", key="btn_act_refused", use_container_width=True):
+            st.session_state["p_selected_action"] = "Nirefer sa RHU/Ospital pero tumanggi"
+
+    action = st.session_state.get("p_selected_action", auto_default_action)
+
+    st.markdown(
+        f"""
+        <div style="background-color: #1e293b; border: 2px solid #6366f1; border-radius: 8px; padding: 12px 18px; margin-top: 10px; margin-bottom: 20px;">
+            <span style="color: #818cf8; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Selected Action Taken:</span><br>
+            <strong style="color: #f8fafc; font-size: 1.1rem;">{action}</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     required_checks = [
@@ -872,7 +910,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         height > 0,
         waist > 0,
         bool(bp1.strip()),
-        action != "-- Pumili ng Aksyon --",
+        bool(action),
     ]
 
     completed_fields = sum(required_checks)
@@ -1371,7 +1409,6 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             search_term = st.text_input("🔎 Search Resident by Full Name, Last Name, or First Name:", key="edit_search_term")
             
             if search_term.strip():
-                # Filter records by matching full name tokens or substrings
                 matching_mask = df.apply(
                     lambda r: search_term.lower() in f"{r['first_name']} {r['middle_name'] or ''} {r['last_name']}".lower() or 
                               search_term.lower() in f"{r['last_name']}, {r['first_name']}".lower(),
@@ -1518,7 +1555,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                     with els2:
                         e_drinker = st.radio("Binge Drinker", yn_opts, index=0 if rec["is_binge_drinker"] == "Hindi" else 1)
                     with els3:
-                        e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["is_exercising"] == "Oo" else 1)
+                        e_exercise = st.radio("Exercises 150m/wk", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
                     with els4:
                         e_healthy_diet = st.radio("Eats Healthy", ny_opts, index=0 if rec["eats_healthy"] == "Oo" else 1)
 
