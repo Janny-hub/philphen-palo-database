@@ -1083,7 +1083,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
     st.subheader(f"PhilPEN Database & Analytics — {portal_location_title}")
 
     tab_view, tab_analytics, tab_edit = st.tabs(
-        ["📋 Master Records Data Table", "📊 Modern Analytics & Demographics", "✏️ Edit Resident Record"]
+        ["📋 Master Records Data Table", "📊 Modern Analytics & Demographics", "✏️ Edit / Delete Resident Record"]
     )
 
     with tab_view:
@@ -1509,7 +1509,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
     with tab_edit:
         if df.empty:
-            st.info("No records available to edit.")
+            st.info("No records available to edit or delete.")
         else:
             st.markdown("#### 🔍 **Search & Select Resident Record**")
             search_term = st.text_input("🔎 Search Resident by Full Name, Last Name, or First Name:", key="edit_search_term")
@@ -1531,9 +1531,36 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                     f"ID {row['id']}: [{row['barangay']}] {row['last_name']}, {row['first_name']} {row['middle_name'] or ''} (DOB: {row['birthday']})": row["id"]
                     for _, row in search_df.iterrows()
                 }
-                selected_label = st.selectbox("Select Resident Record to Edit:", list(resident_options.keys()))
+                selected_label = st.selectbox("Select Resident Record to Edit or Delete:", list(resident_options.keys()))
                 record_id = resident_options[selected_label]
                 rec = df[df["id"] == record_id].iloc[0]
+
+                # ---------------------------------------------------------
+                # DELETE RECORD SECTION
+                # ---------------------------------------------------------
+                with st.expander("🗑️ **Delete Resident Record**", expanded=False):
+                    st.markdown(
+                        f"""
+                        <div class="flag-red-card" style="margin-bottom: 10px;">
+                            <h4>⚠️ CONFIRM RECORD DELETION</h4>
+                            <p>
+                                Sigurado ka ba na gusto mong burahin ang record ni <strong>{rec['first_name'].upper()} {rec['last_name'].upper()}</strong> (ID #{record_id}) mula sa Barangay <strong>{rec['barangay']}</strong>?<br>
+                                🚨 <em>Ang aksyong ito ay hindi na mababawi pagkatapos kumpirmahin.</em>
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    
+                    if st.button("🔴 Permanently Delete Record", key=f"btn_delete_rec_{record_id}"):
+                        conn = sqlite3.connect("philpen_palo.db")
+                        c = conn.cursor()
+                        c.execute("DELETE FROM assessments WHERE id = ?", (record_id,))
+                        conn.commit()
+                        conn.close()
+
+                        st.success(f"Record ID #{record_id} ({rec['first_name']} {rec['last_name']}) has been successfully deleted from the database.")
+                        st.rerun()
 
                 st.markdown("---")
                 st.markdown(f"#### ✏️ **Edit Resident Record — ID #{record_id}**")
