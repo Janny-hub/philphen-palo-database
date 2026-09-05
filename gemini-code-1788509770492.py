@@ -4,6 +4,28 @@ import pandas as pd
 import streamlit as st
 
 # ---------------------------------------------------------
+# SMS NOTIFICATION INTEGRATION FUNCTION
+# ---------------------------------------------------------
+def send_sms_notification(contact_number, message):
+    """
+    Sends SMS notification to resident using an SMS Gateway API (e.g., Semaphore / Twilio).
+    For live deployment, uncomment the requests call and add your API key.
+    """
+    if not contact_number or len(str(contact_number).strip()) < 10:
+        return False, "Invalid contact number."
+    
+    # --- SEMAPHORE API INTEGRATION EXAMPLE (Philippines) ---
+    # import requests
+    # api_key = "YOUR_SEMAPHORE_API_KEY"
+    # payload = {'apikey': api_key, 'number': contact_number, 'message': message, 'sendername': 'PHILPEN'}
+    # response = requests.post('https://api.semaphore.co/api/v4/messages', data=payload)
+    # return response.status_code == 200, response.text
+    
+    # Simulated SMS success for demonstration:
+    print(f"[SMS SENT TO {contact_number}]: {message}")
+    return True, "SMS simulated successfully."
+
+# ---------------------------------------------------------
 # DATABASE SETUP
 # ---------------------------------------------------------
 def init_db():
@@ -20,6 +42,7 @@ def init_db():
             middle_name TEXT,
             zone TEXT,
             barangay TEXT,
+            contact_number TEXT,
             birthday TEXT,
             age INTEGER,
             sex TEXT,
@@ -63,6 +86,8 @@ def init_db():
         c.execute("ALTER TABLE assessments ADD COLUMN takes_diabetes_meds TEXT")
     if "takes_htn_meds" not in columns:
         c.execute("ALTER TABLE assessments ADD COLUMN takes_htn_meds TEXT")
+    if "contact_number" not in columns:
+        c.execute("ALTER TABLE assessments ADD COLUMN contact_number TEXT")
 
     conn.commit()
     conn.close()
@@ -682,7 +707,7 @@ if main_nav == " Executive Dashboard":
 
         st.markdown("#### **High & Very High Risk Patients Requiring Immediate Medical Intervention**")
         high_risk_df = df[df["risk_level"].isin(["High", "Very High"])][
-            ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "bp_avg", "has_diabetes", "risk_level", "action_taken", "assessor_name"]
+            ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "contact_number", "bp_avg", "has_diabetes", "risk_level", "action_taken", "assessor_name"]
         ]
         if not high_risk_df.empty:
             st.dataframe(high_risk_df, use_container_width=True)
@@ -696,24 +721,34 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     st.subheader(f"PhilPEN Assessment Form — {portal_location_title}")
 
     st.markdown("**1. General & Assessor Information**")
+    
+    # Assessor & Date
     col0_a, col0_b = st.columns(2)
     with col0_a:
         assessor_name = st.text_input("Pangalan ng BHW / Assessor*", key="p_assessor")
     with col0_b:
         assessment_date = st.date_input("Date of Assessment*", datetime.date.today(), key="p_date")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # ONE LINE: Apilido, Pangalan, Gitnang Pangalan
+    col_lname, col_fname, col_mname = st.columns(3)
+    with col_lname:
         last_name = st.text_input("Apilido (Last Name)*", key="p_lname")
-    with col2:
+    with col_fname:
         first_name = st.text_input("Pangalan (Given Name)*", key="p_fname")
+    with col_mname:
         middle_name = st.text_input("Gitnang Pangalan (Middle Name)", key="p_mname")
-    with col3:
+
+    # ONE LINE: Zone/Purok, Barangay, Contact Number
+    col_zone, col_brgy, col_contact = st.columns(3)
+    with col_zone:
         zone = st.text_input("Zone / Purok*", key="p_zone")
+    with col_brgy:
         if is_admin:
             target_barangay = st.selectbox("Barangay*", ONLY_BARANGAYS, key="p_brgy_select")
         else:
             target_barangay = st.text_input("Barangay", value=st.session_state["user_brgy"], disabled=True)
+    with col_contact:
+        contact_number = st.text_input("Contact Number (e.g. 09123456789)*", key="p_contact")
 
     col_dob, col_sex = st.columns(2)
     with col_dob:
@@ -925,7 +960,6 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     for opt in indicator_options:
         is_active = (st.session_state.get("p_selected_action") == opt["action"])
-        # Format label with dot first; CSS p::first-letter enlarges dot to Penny Size (~28px)
         button_label = f"{opt['dot']} {opt['label']} — {opt['desc']}"
         btn_type = "primary" if is_active else "secondary"
 
@@ -950,6 +984,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         bool(last_name.strip()),
         bool(first_name.strip()),
         bool(zone.strip()),
+        bool(contact_number.strip()),
         weight > 0,
         height > 0,
         waist > 0,
@@ -973,20 +1008,20 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         elif is_duplicate:
             st.error(f"⛔ CANNOT SAVE RECORD: A record for {first_name} {last_name} already exists for {assessment_year}!")
         elif completed_fields < total_required:
-            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW bago i-save!")
+            st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW at Contact Number bago i-save!")
         else:
             conn = sqlite3.connect("philpen_palo.db")
             c = conn.cursor()
             c.execute(
                 """
                 INSERT INTO assessments (
-                    assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay,
+                    assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay, contact_number,
                     birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
                     waist_risk, has_diabetes, takes_diabetes_meds, diabetes_meds, has_hypertension, 
                     takes_htn_meds, hypertension_meds, high_cholesterol, history_cvd_stroke, 
                     history_heart_attack, history_kidney, family_history, bp_1, bp_2, bp_3, 
                     bp_avg, is_smoker, is_binge_drinker, is_exercising, eats_healthy, risk_level, action_taken
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
                 (
                     str(assessment_date),
@@ -996,6 +1031,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
                     middle_name,
                     zone,
                     target_barangay,
+                    contact_number,
                     str(dob),
                     age,
                     sex,
@@ -1030,7 +1066,15 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
             )
             conn.commit()
             conn.close()
-            st.success("Record successfully saved to the database!")
+
+            # SEND SMS CONFIRMATION TO RESIDENT
+            reg_sms_msg = f"Magandang araw {first_name}! Ikaw ay matagumpay na nairehistro sa PhilPEN Assessment Record ng Barangay {target_barangay}. CVD Risk Level: {risk_level}. Rekomendasyon: {recommended_action}."
+            sms_sent, sms_log = send_sms_notification(contact_number, reg_sms_msg)
+
+            if sms_sent:
+                st.success(f"Record successfully saved to database! 📱 SMS Confirmation sent to {contact_number}.")
+            else:
+                st.success("Record successfully saved to database! (SMS failed to send or number invalid).")
 
 # ---------------------------------------------------------
 # MODULE 3: PHILPEN PROGRAM - PHILPEN DATABASE AND ANALYTICS
@@ -1399,7 +1443,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                         mime="text/csv",
                         key="btn_dl_diab_full",
                     )
-                    diab_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"]
+                    diab_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "contact_number", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "contact_number", "takes_diabetes_meds", "diabetes_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(diab_df[diab_cols], use_container_width=True)
                 else:
                     st.success("No Residents with Diabetes Mellitus recorded.")
@@ -1416,7 +1460,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                         mime="text/csv",
                         key="btn_dl_htn_full",
                     )
-                    htn_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"]
+                    htn_cols = ["id", "barangay", "last_name", "first_name", "age", "sex", "zone", "contact_number", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"] if is_admin else ["id", "last_name", "first_name", "age", "sex", "zone", "contact_number", "takes_htn_meds", "hypertension_meds", "bp_avg", "action_taken", "assessor_name"]
                     st.dataframe(htn_df[htn_cols], use_container_width=True)
                 else:
                     st.success("No Residents with Hypertension recorded.")
@@ -1496,37 +1540,46 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
                 with st.form("edit_full_resident_form"):
                     st.markdown("**1. General & Assessor Information**")
-                    e_assessor_name = st.text_input("Pangalan ng BHW / Assessor", value=str(rec.get("assessor_name", "")))
-
-                    ec1, ec2, ec3 = st.columns(3)
-
-                    try:
-                        curr_ass_date = datetime.datetime.strptime(str(rec["assessment_date"]), "%Y-%m-%d").date()
-                    except ValueError:
-                        curr_ass_date = datetime.date.today()
-
-                    try:
-                        curr_dob = datetime.datetime.strptime(str(rec["birthday"]), "%Y-%m-%d").date()
-                    except ValueError:
-                        curr_dob = datetime.date(1990, 1, 1)
-
-                    with ec1:
+                    
+                    ec0_a, ec0_b = st.columns(2)
+                    with ec0_a:
+                        e_assessor_name = st.text_input("Pangalan ng BHW / Assessor", value=str(rec.get("assessor_name", "")))
+                    with ec0_b:
+                        try:
+                            curr_ass_date = datetime.datetime.strptime(str(rec["assessment_date"]), "%Y-%m-%d").date()
+                        except ValueError:
+                            curr_ass_date = datetime.date.today()
                         e_assessment_date = st.date_input("Assessment Date", value=curr_ass_date)
+
+                    # ONE LINE EDIT: Apilido, Pangalan, Gitnang Pangalan
+                    e_col_lname, e_col_fname, e_col_mname = st.columns(3)
+                    with e_col_lname:
                         e_last_name = st.text_input("Apilido (Last Name)", value=str(rec["last_name"]))
-                    with ec2:
+                    with e_col_fname:
                         e_first_name = st.text_input("Pangalan (Given Name)", value=str(rec["first_name"]))
+                    with e_col_mname:
                         e_middle_name = st.text_input("Gitnang Pangalan (Middle Name)", value=str(rec["middle_name"] or ""))
-                    with ec3:
+
+                    # ONE LINE EDIT: Zone/Purok, Barangay, Contact Number
+                    e_col_zone, e_col_brgy, e_col_contact = st.columns(3)
+                    with e_col_zone:
                         e_zone = st.text_input("Zone / Purok", value=str(rec["zone"]))
+                    with e_col_brgy:
                         if is_admin:
                             curr_brgy_val = str(rec["barangay"])
                             e_brgy_idx = ONLY_BARANGAYS.index(curr_brgy_val) if curr_brgy_val in ONLY_BARANGAYS else 0
                             e_barangay = st.selectbox("Barangay", ONLY_BARANGAYS, index=e_brgy_idx)
                         else:
                             e_barangay = st.text_input("Barangay", value=str(rec["barangay"]), disabled=True)
+                    with e_col_contact:
+                        e_contact_number = st.text_input("Contact Number", value=str(rec.get("contact_number", "")))
 
                     ec_dob, ec_sex = st.columns(2)
                     with ec_dob:
+                        try:
+                            curr_dob = datetime.datetime.strptime(str(rec["birthday"]), "%Y-%m-%d").date()
+                        except ValueError:
+                            curr_dob = datetime.date(1990, 1, 1)
                         e_dob = st.date_input("Birthday", value=curr_dob, min_value=datetime.date(1920, 1, 1))
                         e_age = calculate_age(e_dob)
                         st.caption(f"Calculated Age: {e_age} years old")
@@ -1641,7 +1694,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
                         new_bp_avg, e_systolic = calculate_average_bp(e_bp1, e_bp2, e_bp3)
 
-                        new_risk_level, _, _, _, _ = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
+                        new_risk_level, _, _, _, e_rec_action = calculate_cvd_risk(e_age, e_sex, e_smoker, e_systolic, new_bmi, e_has_diabetes)
                         e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
                         e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
 
@@ -1650,7 +1703,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                         c.execute(
                             """
                             UPDATE assessments SET
-                                assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?,
+                                assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?, contact_number=?,
                                 birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
                                 waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
                                 has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
@@ -1667,6 +1720,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                                 e_middle_name,
                                 e_zone,
                                 e_barangay,
+                                e_contact_number,
                                 str(e_dob),
                                 e_age,
                                 e_sex,
@@ -1702,7 +1756,15 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                         )
                         conn.commit()
                         conn.close()
-                        st.success("All record details updated successfully! Analytics dashboard updated.")
+
+                        # SEND UPDATE SMS NOTIFICATION TO RESIDENT
+                        update_sms_msg = f"Magandang araw {e_first_name}! Ang iyong PhilPEN Assessment Record ay na-update na. Bagong CVD Risk Level: {new_risk_level}. Action Taken: {e_action}."
+                        sms_sent, _ = send_sms_notification(e_contact_number, update_sms_msg)
+
+                        if sms_sent:
+                            st.success(f"All record details updated successfully! 📱 Update SMS sent to {e_contact_number}.")
+                        else:
+                            st.success("All record details updated successfully! Analytics dashboard updated.")
                         st.rerun()
 
 # ---------------------------------------------------------
