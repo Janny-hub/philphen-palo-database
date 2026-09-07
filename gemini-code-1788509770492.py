@@ -1,7 +1,19 @@
 import datetime
+import os
 import sqlite3
 import pandas as pd
 import streamlit as st
+
+# ---------------------------------------------------------
+# DATABASE CONFIGURATION & CONNECTION HELPER
+# ---------------------------------------------------------
+DB_FILE = "philpen_palo.db"
+
+def get_db_connection():
+    """Returns a robust SQLite database connection."""
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # ---------------------------------------------------------
 # SMS NOTIFICATION INTEGRATION FUNCTION
@@ -26,72 +38,70 @@ def send_sms_notification(contact_number, message):
     return True, "SMS simulated successfully."
 
 # ---------------------------------------------------------
-# DATABASE SETUP
+# DATABASE SETUP & AUTO-MIGRATION
 # ---------------------------------------------------------
 def init_db():
-    conn = sqlite3.connect("philpen_palo.db")
-    c = conn.cursor()
-    c.execute(
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS assessments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                assessment_date TEXT,
+                assessor_name TEXT,
+                last_name TEXT,
+                first_name TEXT,
+                middle_name TEXT,
+                zone TEXT,
+                barangay TEXT,
+                contact_number TEXT,
+                birthday TEXT,
+                age INTEGER,
+                sex TEXT,
+                weight_kg REAL,
+                height_cm REAL,
+                bmi REAL,
+                bmi_class TEXT,
+                waist_cm REAL,
+                waist_risk TEXT,
+                has_diabetes TEXT,
+                takes_diabetes_meds TEXT,
+                diabetes_meds TEXT,
+                has_hypertension TEXT,
+                takes_htn_meds TEXT,
+                hypertension_meds TEXT,
+                high_cholesterol TEXT,
+                history_cvd_stroke INTEGER,
+                history_heart_attack INTEGER,
+                history_kidney INTEGER,
+                family_history TEXT,
+                bp_1 TEXT,
+                bp_2 TEXT,
+                bp_3 TEXT,
+                bp_avg TEXT,
+                is_smoker TEXT,
+                is_binge_drinker TEXT,
+                is_exercising TEXT,
+                eats_healthy TEXT,
+                risk_level TEXT,
+                action_taken TEXT
+            )
         """
-        CREATE TABLE IF NOT EXISTS assessments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            assessment_date TEXT,
-            assessor_name TEXT,
-            last_name TEXT,
-            first_name TEXT,
-            middle_name TEXT,
-            zone TEXT,
-            barangay TEXT,
-            contact_number TEXT,
-            birthday TEXT,
-            age INTEGER,
-            sex TEXT,
-            weight_kg REAL,
-            height_cm REAL,
-            bmi REAL,
-            bmi_class TEXT,
-            waist_cm REAL,
-            waist_risk TEXT,
-            has_diabetes TEXT,
-            takes_diabetes_meds TEXT,
-            diabetes_meds TEXT,
-            has_hypertension TEXT,
-            takes_htn_meds TEXT,
-            hypertension_meds TEXT,
-            high_cholesterol TEXT,
-            history_cvd_stroke INTEGER,
-            history_heart_attack INTEGER,
-            history_kidney INTEGER,
-            family_history TEXT,
-            bp_1 TEXT,
-            bp_2 TEXT,
-            bp_3 TEXT,
-            bp_avg TEXT,
-            is_smoker TEXT,
-            is_binge_drinker TEXT,
-            is_exercising TEXT,
-            eats_healthy TEXT,
-            risk_level TEXT,
-            action_taken TEXT
         )
-    """
-    )
 
-    # Database Migration Check for Columns
-    c.execute("PRAGMA table_info(assessments)")
-    columns = [column[1] for column in c.fetchall()]
-    if "assessor_name" not in columns:
-        c.execute("ALTER TABLE assessments ADD COLUMN assessor_name TEXT")
-    if "takes_diabetes_meds" not in columns:
-        c.execute("ALTER TABLE assessments ADD COLUMN takes_diabetes_meds TEXT")
-    if "takes_htn_meds" not in columns:
-        c.execute("ALTER TABLE assessments ADD COLUMN takes_htn_meds TEXT")
-    if "contact_number" not in columns:
-        c.execute("ALTER TABLE assessments ADD COLUMN contact_number TEXT")
+        # Database Migration Check for Columns
+        c.execute("PRAGMA table_info(assessments)")
+        columns = [column[1] for column in c.fetchall()]
+        if "assessor_name" not in columns:
+            c.execute("ALTER TABLE assessments ADD COLUMN assessor_name TEXT")
+        if "takes_diabetes_meds" not in columns:
+            c.execute("ALTER TABLE assessments ADD COLUMN takes_diabetes_meds TEXT")
+        if "takes_htn_meds" not in columns:
+            c.execute("ALTER TABLE assessments ADD COLUMN takes_htn_meds TEXT")
+        if "contact_number" not in columns:
+            c.execute("ALTER TABLE assessments ADD COLUMN contact_number TEXT")
 
-    conn.commit()
-    conn.close()
-
+        conn.commit()
 
 init_db()
 
@@ -169,12 +179,10 @@ def calculate_age(born):
     today = datetime.date.today()
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
-
 def calculate_bmi(weight, height):
     if height > 0:
         return round((weight / height / height) * 10000, 2)
     return 0.0
-
 
 def classify_bmi(bmi):
     if bmi < 18.5:
@@ -186,14 +194,12 @@ def classify_bmi(bmi):
     else:
         return "25.0 or more (OBESITY)"
 
-
 def classify_waist(sex, waist):
     if sex == "Male":
         return "AT RISK (≥ 90 cm)" if waist >= 90 else "NOT AT RISK (< 90 cm)"
     elif sex == "Female":
         return "AT RISK (≥ 80 cm)" if waist >= 80 else "NOT AT RISK (< 80 cm)"
     return "N/A"
-
 
 def parse_bp(bp_str):
     if not bp_str or "/" not in bp_str:
@@ -203,7 +209,6 @@ def parse_bp(bp_str):
         return int(parts[0]), int(parts[1])
     except (ValueError, IndexError):
         return None, None
-
 
 def calculate_average_bp(bp1, bp2, bp3):
     readings = [parse_bp(bp1), parse_bp(bp2), parse_bp(bp3)]
@@ -217,7 +222,6 @@ def calculate_average_bp(bp1, bp2, bp3):
     avg_dbp = round(sum(valid_dbps) / len(valid_dbps)) if valid_dbps else 80
     return f"{avg_sbp}/{avg_dbp}", avg_sbp
 
-
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
     if (diabetes == "Meron" and sbp >= 160) or (sbp >= 180) or (diabetes == "Meron" and age >= 60 and smoker == "Oo"):
         return "Very High", "≥30%", "#7f1d1d", "#ffffff", "Urgent referral to Physician/ Hospital"
@@ -229,39 +233,35 @@ def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
         return "Mild", "5% to <10%", "#eab308", "#000000", "Refer to Midwife"
     return "Low", "<5%", "#16a34a", "#ffffff", "Counselling only"
 
-
 def check_annual_duplicate(first_name, last_name, dob, year, exclude_id=None):
     if not first_name.strip() or not last_name.strip():
         return False, None
 
-    conn = sqlite3.connect("philpen_palo.db")
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        query = """
+            SELECT id, assessment_date, first_name, last_name FROM assessments 
+            WHERE birthday = ?
+              AND strftime('%Y', assessment_date) = ?
+        """
+        params = [str(dob), str(year)]
 
-    query = """
-        SELECT id, assessment_date, first_name, last_name FROM assessments 
-        WHERE birthday = ?
-          AND strftime('%Y', assessment_date) = ?
-    """
-    params = [str(dob), str(year)]
+        if exclude_id:
+            query += " AND id != ?"
+            params.append(exclude_id)
 
-    if exclude_id:
-        query += " AND id != ?"
-        params.append(exclude_id)
-
-    c.execute(query, params)
-    records = c.fetchall()
-    conn.close()
+        c.execute(query, params)
+        records = c.fetchall()
 
     input_tokens = sorted(f"{first_name} {last_name}".lower().split())
 
     for r in records:
-        rec_id, ass_date, db_fn, db_ln = r
+        rec_id, ass_date, db_fn, db_ln = r["id"], r["assessment_date"], r["first_name"], r["last_name"]
         db_tokens = sorted(f"{db_fn} {db_ln}".lower().split())
         if input_tokens == db_tokens:
             return True, ass_date
 
     return False, None
-
 
 def render_modern_table_html(title, headers, rows):
     header_html = "".join([f'<th style="padding: 10px; border-bottom: 2px solid #334155; color: #818cf8; font-weight: 600; text-align: left;">{h}</th>' for h in headers])
@@ -286,7 +286,6 @@ def render_modern_table_html(title, headers, rows):
     </div>
     """
     return html
-
 
 # ---------------------------------------------------------
 # STREAMLIT CONFIG & LOW-GLARE DARK CHARCOAL STYLING
@@ -591,17 +590,16 @@ main_nav = st.sidebar.radio(
 
 sidebar_progress_box = st.sidebar.empty()
 
-# Fetch Dataset
-conn = sqlite3.connect("philpen_palo.db")
-if is_admin:
-    df = pd.read_sql_query("SELECT * FROM assessments", conn)
-else:
-    df = pd.read_sql_query(
-        "SELECT * FROM assessments WHERE barangay = ?",
-        conn,
-        params=(st.session_state["user_brgy"],),
-    )
-conn.close()
+# Fetch Dataset SAFELY USING CONTEXT MANAGER
+with get_db_connection() as conn:
+    if is_admin:
+        df = pd.read_sql_query("SELECT * FROM assessments", conn)
+    else:
+        df = pd.read_sql_query(
+            "SELECT * FROM assessments WHERE barangay = ?",
+            conn,
+            params=(st.session_state["user_brgy"],),
+        )
 
 portal_location_title = "Municipality of Palo (All Barangays Overview)" if is_admin else f"Barangay {st.session_state['user_brgy']}"
 
@@ -912,7 +910,6 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
     st.markdown("##### 🎯 **Action Taken: Click Option Box to Select**")
     st.caption("Click any colored option box below to select the Action Taken (Only 1 action can be chosen):")
 
-    # FULL-WIDTH CLICKABLE OPTION BOXES WITH PENNY-SIZED DOTS (1.8rem / ~28px) STRICTLY ON LEFT
     indicator_options = [
         {
             "label": "Low Risk (<5%)",
@@ -1010,62 +1007,61 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         elif completed_fields < total_required:
             st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW at Contact Number bago i-save!")
         else:
-            conn = sqlite3.connect("philpen_palo.db")
-            c = conn.cursor()
-            c.execute(
-                """
-                INSERT INTO assessments (
-                    assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay, contact_number,
-                    birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
-                    waist_risk, has_diabetes, takes_diabetes_meds, diabetes_meds, has_hypertension, 
-                    takes_htn_meds, hypertension_meds, high_cholesterol, history_cvd_stroke, 
-                    history_heart_attack, history_kidney, family_history, bp_1, bp_2, bp_3, 
-                    bp_avg, is_smoker, is_binge_drinker, is_exercising, eats_healthy, risk_level, action_taken
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """,
-                (
-                    str(assessment_date),
-                    assessor_name,
-                    last_name,
-                    first_name,
-                    middle_name,
-                    zone,
-                    target_barangay,
-                    contact_number,
-                    str(dob),
-                    age,
-                    sex,
-                    weight,
-                    height,
-                    bmi,
-                    bmi_cat,
-                    waist,
-                    waist_risk,
-                    has_diabetes,
-                    takes_diabetes_meds,
-                    diabetes_meds_str,
-                    has_htn,
-                    takes_htn_meds,
-                    htn_meds_str,
-                    cholesterol,
-                    int(cvd_stroke),
-                    int(heart_attack),
-                    int(kidney_prob),
-                    fam_history,
-                    bp1,
-                    bp2,
-                    bp3,
-                    bp_avg,
-                    smoker,
-                    drinker,
-                    exercise,
-                    healthy_diet,
-                    risk_level,
-                    action,
-                ),
-            )
-            conn.commit()
-            conn.close()
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute(
+                    """
+                    INSERT INTO assessments (
+                        assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay, contact_number,
+                        birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
+                        waist_risk, has_diabetes, takes_diabetes_meds, diabetes_meds, has_hypertension, 
+                        takes_htn_meds, hypertension_meds, high_cholesterol, history_cvd_stroke, 
+                        history_heart_attack, history_kidney, family_history, bp_1, bp_2, bp_3, 
+                        bp_avg, is_smoker, is_binge_drinker, is_exercising, eats_healthy, risk_level, action_taken
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                    (
+                        str(assessment_date),
+                        assessor_name,
+                        last_name,
+                        first_name,
+                        middle_name,
+                        zone,
+                        target_barangay,
+                        contact_number,
+                        str(dob),
+                        age,
+                        sex,
+                        weight,
+                        height,
+                        bmi,
+                        bmi_cat,
+                        waist,
+                        waist_risk,
+                        has_diabetes,
+                        takes_diabetes_meds,
+                        diabetes_meds_str,
+                        has_htn,
+                        takes_htn_meds,
+                        htn_meds_str,
+                        cholesterol,
+                        int(cvd_stroke),
+                        int(heart_attack),
+                        int(kidney_prob),
+                        fam_history,
+                        bp1,
+                        bp2,
+                        bp3,
+                        bp_avg,
+                        smoker,
+                        drinker,
+                        exercise,
+                        healthy_diet,
+                        risk_level,
+                        action,
+                    ),
+                )
+                conn.commit()
 
             # SEND SMS CONFIRMATION TO RESIDENT
             reg_sms_msg = f"Magandang araw {first_name}! Ikaw ay matagumpay na nairehistro sa PhilPEN Assessment Record ng Barangay {target_barangay}. CVD Risk Level: {risk_level}. Rekomendasyon: {recommended_action}."
@@ -1189,7 +1185,6 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # ADMIN SPECIAL: ENHANCED BARANGAY SUMMARY MATRIX WITH EXACT TERMS
             if is_admin:
                 st.markdown("### 🏛️ **Palo Municipal Screening Progress per Barangay**")
                 
@@ -1218,9 +1213,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                 )
                 st.markdown("---")
 
-            # ---------------------------------------------------------
-            # SECTION 1: MONTHLY ENTRIES BREAKDOWN WITH ADULT & ELDERLY
-            # ---------------------------------------------------------
+            # MONTHLY ENTRIES BREAKDOWN
             st.markdown("### 🗓️ **Monthly Assessment Entry Breakdown (January - December)**")
             
             st.markdown(
@@ -1276,9 +1269,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
             st.markdown("---")
 
-            # ---------------------------------------------------------
-            # SECTION 2: SEX-DISAGGREGATED ANALYTICS
-            # ---------------------------------------------------------
+            # SEX ANALYTICS BREAKDOWN MATRIX
             st.markdown("### ⚖️ **Sex Analytics Breakdown Matrix (Female vs Male)**")
             
             sex_col1, sex_col2 = st.columns(2)
@@ -1351,9 +1342,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
             st.markdown("---")
 
-            # ---------------------------------------------------------
-            # SECTION 3: TABULATED CATEGORICAL ANALYTICS
-            # ---------------------------------------------------------
+            # TABULATED CATEGORICAL ANALYTICS
             st.markdown("### 📊 **Categorical Summary Tables**")
 
             summary_c1, summary_c2 = st.columns(2)
@@ -1425,16 +1414,13 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
             st.markdown("---")
 
-            # ---------------------------------------------------------
-            # SECTION 4: CHRONIC DISEASE PATIENT ROSTERS WITH DOWNLOAD
-            # ---------------------------------------------------------
+            # CHRONIC DISEASE PATIENT ROSTERS
             st.markdown("### 🩺 **Diabetes Mellitus and Hypertension Resident Rosters**")
             roster_col1, roster_col2 = st.columns(2)
 
             with roster_col1:
                 st.markdown("#### 🩸 **List of Residents with Diabetes Mellitus**")
                 if not diab_df.empty:
-                    # FULL INFORMATION DOWNLOAD FOR DIABETES
                     diab_full_csv = diab_df.to_csv(index=False).encode("utf-8")
                     st.download_button(
                         label="📥 Download Diabetes Roster (All Patient Information CSV)",
@@ -1451,7 +1437,6 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
             with roster_col2:
                 st.markdown("#### 🫀 **List of Residents with Hypertension**")
                 if not htn_df.empty:
-                    # FULL INFORMATION DOWNLOAD FOR HYPERTENSION
                     htn_full_csv = htn_df.to_csv(index=False).encode("utf-8")
                     st.download_button(
                         label="📥 Download Hypertension Roster (All Patient Information CSV)",
@@ -1467,9 +1452,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
             st.markdown("---")
 
-            # ---------------------------------------------------------
-            # SECTION 5: BHW / ASSESSOR SCREENING TALLY SHEET
-            # ---------------------------------------------------------
+            # BHW / ASSESSOR TALLY SHEET
             st.markdown("### 👩‍⚕️ **BHW / Assessor Assessment Tally Sheet**")
             
             if "assessor_name" in df.columns:
@@ -1535,9 +1518,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                 record_id = resident_options[selected_label]
                 rec = df[df["id"] == record_id].iloc[0]
 
-                # ---------------------------------------------------------
                 # DELETE RECORD SECTION
-                # ---------------------------------------------------------
                 with st.expander("🗑️ **Delete Resident Record**", expanded=False):
                     st.markdown(
                         f"""
@@ -1553,11 +1534,10 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                     )
                     
                     if st.button("🔴 Permanently Delete Record", key=f"btn_delete_rec_{record_id}"):
-                        conn = sqlite3.connect("philpen_palo.db")
-                        c = conn.cursor()
-                        c.execute("DELETE FROM assessments WHERE id = ?", (record_id,))
-                        conn.commit()
-                        conn.close()
+                        with get_db_connection() as conn:
+                            c = conn.cursor()
+                            c.execute("DELETE FROM assessments WHERE id = ?", (record_id,))
+                            conn.commit()
 
                         st.success(f"Record ID #{record_id} ({rec['first_name']} {rec['last_name']}) has been successfully deleted from the database.")
                         st.rerun()
@@ -1578,7 +1558,6 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                             curr_ass_date = datetime.date.today()
                         e_assessment_date = st.date_input("Assessment Date", value=curr_ass_date)
 
-                    # ONE LINE EDIT: Apilido, Pangalan, Gitnang Pangalan
                     e_col_lname, e_col_fname, e_col_mname = st.columns(3)
                     with e_col_lname:
                         e_last_name = st.text_input("Apilido (Last Name)", value=str(rec["last_name"]))
@@ -1587,7 +1566,6 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                     with e_col_mname:
                         e_middle_name = st.text_input("Gitnang Pangalan (Middle Name)", value=str(rec["middle_name"] or ""))
 
-                    # ONE LINE EDIT: Zone/Purok, Barangay, Contact Number
                     e_col_zone, e_col_brgy, e_col_contact = st.columns(3)
                     with e_col_zone:
                         e_zone = st.text_input("Zone / Purok", value=str(rec["zone"]))
@@ -1725,64 +1703,63 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                         e_diab_meds_str = ", ".join(e_diab_meds) if (e_takes_diabetes_meds == "Meron" and e_diab_meds) else "Wala"
                         e_htn_meds_str = ", ".join(e_htn_meds) if (e_takes_htn_meds == "Meron" and e_htn_meds) else "Wala"
 
-                        conn = sqlite3.connect("philpen_palo.db")
-                        c = conn.cursor()
-                        c.execute(
-                            """
-                            UPDATE assessments SET
-                                assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?, contact_number=?,
-                                birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
-                                waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
-                                has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
-                                history_cvd_stroke=?, history_heart_attack=?, history_kidney=?, family_history=?, 
-                                bp_1=?, bp_2=?, bp_3=?, bp_avg=?, is_smoker=?, is_binge_drinker=?, is_exercising=?, 
-                                eats_healthy=?, risk_level=?, action_taken=?
-                            WHERE id=?
-                        """,
-                            (
-                                str(e_assessment_date),
-                                e_assessor_name,
-                                e_last_name,
-                                e_first_name,
-                                e_middle_name,
-                                e_zone,
-                                e_barangay,
-                                e_contact_number,
-                                str(e_dob),
-                                e_age,
-                                e_sex,
-                                e_weight,
-                                e_height,
-                                new_bmi,
-                                new_bmi_cat,
-                                e_waist,
-                                new_waist_risk,
-                                e_has_diabetes,
-                                e_takes_diabetes_meds,
-                                e_diab_meds_str,
-                                e_has_htn,
-                                e_takes_htn_meds,
-                                e_htn_meds_str,
-                                e_cholesterol,
-                                int(e_cvd_stroke),
-                                int(e_heart_attack),
-                                int(e_kidney_prob),
-                                e_fam_history,
-                                e_bp1,
-                                e_bp2,
-                                e_bp3,
-                                new_bp_avg,
-                                e_smoker,
-                                e_drinker,
-                                e_exercise,
-                                e_healthy_diet,
-                                new_risk_level,
-                                e_action,
-                                record_id,
-                            ),
-                        )
-                        conn.commit()
-                        conn.close()
+                        with get_db_connection() as conn:
+                            c = conn.cursor()
+                            c.execute(
+                                """
+                                UPDATE assessments SET
+                                    assessment_date=?, assessor_name=?, last_name=?, first_name=?, middle_name=?, zone=?, barangay=?, contact_number=?,
+                                    birthday=?, age=?, sex=?, weight_kg=?, height_cm=?, bmi=?, bmi_class=?,
+                                    waist_cm=?, waist_risk=?, has_diabetes=?, takes_diabetes_meds=?, diabetes_meds=?, 
+                                    has_hypertension=?, takes_htn_meds=?, hypertension_meds=?, high_cholesterol=?, 
+                                    history_cvd_stroke=?, history_heart_attack=?, history_kidney=?, family_history=?, 
+                                    bp_1=?, bp_2=?, bp_3=?, bp_avg=?, is_smoker=?, is_binge_drinker=?, is_exercising=?, 
+                                    eats_healthy=?, risk_level=?, action_taken=?
+                                WHERE id=?
+                            """,
+                                (
+                                    str(e_assessment_date),
+                                    e_assessor_name,
+                                    e_last_name,
+                                    e_first_name,
+                                    e_middle_name,
+                                    e_zone,
+                                    e_barangay,
+                                    e_contact_number,
+                                    str(e_dob),
+                                    e_age,
+                                    e_sex,
+                                    e_weight,
+                                    e_height,
+                                    new_bmi,
+                                    new_bmi_cat,
+                                    e_waist,
+                                    new_waist_risk,
+                                    e_has_diabetes,
+                                    e_takes_diabetes_meds,
+                                    e_diab_meds_str,
+                                    e_has_htn,
+                                    e_takes_htn_meds,
+                                    e_htn_meds_str,
+                                    e_cholesterol,
+                                    int(e_cvd_stroke),
+                                    int(e_heart_attack),
+                                    int(e_kidney_prob),
+                                    e_fam_history,
+                                    e_bp1,
+                                    e_bp2,
+                                    e_bp3,
+                                    new_bp_avg,
+                                    e_smoker,
+                                    e_drinker,
+                                    e_exercise,
+                                    e_healthy_diet,
+                                    new_risk_level,
+                                    e_action,
+                                    record_id,
+                                ),
+                            )
+                            conn.commit()
 
                         # SEND UPDATE SMS NOTIFICATION TO RESIDENT
                         update_sms_msg = f"Magandang araw {e_first_name}! Ang iyong PhilPEN Assessment Record ay na-update na. Bagong CVD Risk Level: {new_risk_level}. Action Taken: {e_action}."
