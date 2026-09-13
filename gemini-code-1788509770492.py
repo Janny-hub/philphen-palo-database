@@ -1608,8 +1608,8 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                             c = conn.cursor()
                             c.execute("DELETE FROM assessments WHERE id = ?", (record_id,))
                             conn.commit()
-            backup_to_supabase()
 
+                        backup_to_supabase()
                         st.success(f"Record ID #{record_id} ({rec['first_name']} {rec['last_name']}) has been successfully deleted from the database.")
                         st.rerun()
 
