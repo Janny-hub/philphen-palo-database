@@ -1,13 +1,12 @@
 import datetime
 import os
 import sqlite3
-import json
 import pandas as pd
 import streamlit as st
 
 try:
     from supabase import create_client, Client
-except Exception:
+except ImportError:
     create_client = None
     Client = None
 
@@ -16,71 +15,39 @@ except Exception:
 # ---------------------------------------------------------
 DB_FILE = "philpen_palo.db"
 
-# ================= SUPABASE PERMANENT STORAGE =================
-# The local SQLite database is retained as the working database
-# so all existing modules, queries, analytics, and features remain unchanged.
-
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
-
-supabase = None
-if create_client and SUPABASE_URL and SUPABASE_KEY:
+# ---------------------------------------------------------
+# SUPABASE PERMANENT BACKUP STORAGE
+# ---------------------------------------------------------
+def get_supabase_client():
     try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        url = st.secrets.get("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_KEY")
+        if create_client and url and key:
+            return create_client(url, key)
     except Exception:
-        supabase = None
+        pass
+    return None
 
+def backup_to_supabase():
+    """Backup SQLite assessment records to Supabase without changing app behavior."""
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return
+        with get_db_connection() as conn:
+            rows = [dict(r) for r in conn.execute("SELECT * FROM assessments").fetchall()]
+        supabase.table("teki_storage").upsert({
+            "id": 1,
+            "data_json": pd.Series(rows).to_json(),
+        }).execute()
+    except Exception as e:
+        print("Supabase backup skipped:", e)
 
 def get_db_connection():
-    """Returns the existing SQLite connection without changing app features."""
+    """Returns a robust SQLite database connection."""
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
-
-
-def backup_to_supabase():
-    """Backs up assessment records to Supabase permanently."""
-    if not supabase:
-        return
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            conn.row_factory = sqlite3.Row
-            rows = [dict(r) for r in conn.execute("SELECT * FROM assessments").fetchall()]
-
-        supabase.table("teki_storage").upsert({
-            "id": 1,
-            "data_json": json.dumps(rows, default=str)
-        }).execute()
-    except Exception:
-        pass
-
-
-def restore_from_supabase():
-    """Restores records when local hosting storage is reset."""
-    if not supabase:
-        return
-    try:
-        result = supabase.table("teki_storage").select("*").eq("id", 1).execute()
-        if not result.data:
-            return
-
-        records = json.loads(result.data[0]["data_json"])
-
-        with sqlite3.connect(DB_FILE) as conn:
-            count = conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0]
-
-            if count == 0 and records:
-                for r in records:
-                    cols = list(r.keys())
-                    values = [r[c] for c in cols]
-                    conn.execute(
-                        f"INSERT INTO assessments ({','.join(cols)}) VALUES ({','.join(['?']*len(cols))})",
-                        values
-                    )
-                conn.commit()
-            backup_to_supabase()
-    except Exception:
-        pass
 
 # ---------------------------------------------------------
 # SMS NOTIFICATION INTEGRATION FUNCTION
@@ -170,9 +137,7 @@ def init_db():
 
         conn.commit()
 
-
 init_db()
-restore_from_supabase()
 
 # ---------------------------------------------------------
 # MUNICIPAL & BARANGAY CREDENTIALS
@@ -1131,6 +1096,7 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
                     ),
                 )
                 conn.commit()
+
             backup_to_supabase()
 
             # SEND SMS CONFIRMATION TO RESIDENT
@@ -1610,6 +1576,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                             conn.commit()
 
                         backup_to_supabase()
+
                         st.success(f"Record ID #{record_id} ({rec['first_name']} {rec['last_name']}) has been successfully deleted from the database.")
                         st.rerun()
 
@@ -1831,7 +1798,8 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                                 ),
                             )
                             conn.commit()
-            backup_to_supabase()
+
+                        backup_to_supabase()
 
                         # SEND UPDATE SMS NOTIFICATION TO RESIDENT
                         update_sms_msg = f"Magandang araw {e_first_name}! Ang iyong PhilPEN Assessment Record ay na-update na. Bagong CVD Risk Level: {new_risk_level}. Action Taken: {e_action}."
