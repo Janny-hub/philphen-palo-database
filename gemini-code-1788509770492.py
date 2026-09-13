@@ -169,7 +169,7 @@ def init_db():
             c.execute("ALTER TABLE assessments ADD COLUMN contact_number TEXT")
 
         conn.commit()
-            backup_to_supabase()
+
 
 init_db()
 restore_from_supabase()
