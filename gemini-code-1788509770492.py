@@ -970,7 +970,13 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
 
     # WHO hypertension auto-classification from BP reading
     auto_htn_status, htn_category = auto_detect_hypertension(sbp_for_calc, dbp_for_calc)
-    has_htn = auto_htn_status
+
+    # Preserve patient's previous hypertension diagnosis OR detect from BP
+    # A normal BP today should not remove a known hypertension diagnosis.
+    if has_htn == "Meron" or auto_htn_status == "Meron":
+        has_htn = "Meron"
+    else:
+        has_htn = "Wala"
 
     if bp1:
         st.success(f"**Average Computed BP:** {bp_avg}")
