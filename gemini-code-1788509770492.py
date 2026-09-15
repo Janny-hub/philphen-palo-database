@@ -309,6 +309,9 @@ def classify_who_hypertension(sbp, dbp=0):
 
 def auto_detect_hypertension(sbp, dbp=0):
     """Automatically categorizes hypertension status from BP."""
+    if sbp is None or dbp is None:
+        return "Wala", "No BP Classification"
+
     category = classify_who_hypertension(sbp, dbp)
     if category in ["Grade 1 Hypertension", "Grade 2 Hypertension", "Grade 3 Hypertension"]:
         return "Meron", category
