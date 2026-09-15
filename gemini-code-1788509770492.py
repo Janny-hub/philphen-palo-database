@@ -28,24 +28,52 @@ def get_supabase_client():
         pass
     return None
 
-def backup_to_supabase():
-    """Backup SQLite assessment records to Supabase without changing app behavior."""
-    try:
-        supabase = get_supabase_client()
-        if not supabase:
-            return
-        with get_db_connection() as conn:
-            rows = [dict(r) for r in conn.execute("SELECT * FROM assessments").fetchall()]
-        supabase.table("teki_storage").upsert({
-            "id": 1,
-            "data_json": pd.Series(rows).to_json(),
-        }).execute()
-    except Exception as e:
-        print("Supabase backup skipped:", e)
+def save_assessment_to_supabase(record):
+    """Primary permanent storage. Saves each assessment as its own Supabase row."""
+    supabase = get_supabase_client()
+    if not supabase:
+        raise Exception("Supabase connection unavailable")
 
+    return supabase.table("assessments").insert(record).execute()
+
+
+def load_assessments_from_supabase(barangay=None, admin=False):
+    """Loads live data directly from Supabase."""
+    supabase = get_supabase_client()
+    if not supabase:
+        return pd.DataFrame()
+
+    query = supabase.table("assessments").select("*")
+
+    if not admin and barangay:
+        query = query.eq("barangay", barangay)
+
+    result = query.execute()
+
+    if not result.data:
+        return pd.DataFrame()
+
+    return pd.DataFrame(result.data)
+
+
+def delete_assessment_from_supabase(record_id):
+    """Deletes only when authorized by user action."""
+    supabase = get_supabase_client()
+    if supabase:
+        return supabase.table("assessments").delete().eq("id", record_id).execute()
+
+
+def backup_to_supabase():
+    """Deprecated. Supabase is now the primary database."""
+    pass
 
 
 def restore_from_supabase():
+    """Deprecated. Supabase is now read directly."""
+    pass
+
+
+
     """Restore SQLite records from Supabase backup after server restart."""
     try:
         supabase = get_supabase_client()
@@ -175,7 +203,6 @@ def init_db():
         conn.commit()
 
 init_db()
-restore_from_supabase()
 
 # ---------------------------------------------------------
 # MUNICIPAL & BARANGAY CREDENTIALS
@@ -685,16 +712,11 @@ main_nav = st.sidebar.radio(
 
 sidebar_progress_box = st.sidebar.empty()
 
-# Fetch Dataset SAFELY USING CONTEXT MANAGER
-with get_db_connection() as conn:
-    if is_admin:
-        df = pd.read_sql_query("SELECT * FROM assessments", conn)
-    else:
-        df = pd.read_sql_query(
-            "SELECT * FROM assessments WHERE barangay = ?",
-            conn,
-            params=(st.session_state["user_brgy"],),
-        )
+# Fetch Dataset directly from Supabase (Permanent Storage)
+df = load_assessments_from_supabase(
+    barangay=st.session_state["user_brgy"],
+    admin=is_admin
+)
 
 portal_location_title = "Municipality of Palo (All Barangays Overview)" if is_admin else f"Barangay {st.session_state['user_brgy']}"
 
@@ -1118,63 +1140,48 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         elif completed_fields < total_required:
             st.error("Paki-kumpleto ang lahat ng mandatory fields (*) kasama ang Pangalan ng BHW at Contact Number bago i-save!")
         else:
-            with get_db_connection() as conn:
-                c = conn.cursor()
-                c.execute(
-                    """
-                    INSERT INTO assessments (
-                        assessment_date, assessor_name, last_name, first_name, middle_name, zone, barangay, contact_number,
-                        birthday, age, sex, weight_kg, height_cm, bmi, bmi_class, waist_cm,
-                        waist_risk, has_diabetes, takes_diabetes_meds, diabetes_meds, has_hypertension, 
-                        takes_htn_meds, hypertension_meds, high_cholesterol, history_cvd_stroke, 
-                        history_heart_attack, history_kidney, family_history, bp_1, bp_2, bp_3, 
-                        bp_avg, is_smoker, is_binge_drinker, is_exercising, eats_healthy, risk_level, action_taken
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """,
-                    (
-                        str(assessment_date),
-                        assessor_name,
-                        last_name,
-                        first_name,
-                        middle_name,
-                        zone,
-                        target_barangay,
-                        contact_number,
-                        str(dob),
-                        age,
-                        sex,
-                        weight,
-                        height,
-                        bmi,
-                        bmi_cat,
-                        waist,
-                        waist_risk,
-                        has_diabetes,
-                        takes_diabetes_meds,
-                        diabetes_meds_str,
-                        has_htn,
-                        takes_htn_meds,
-                        htn_meds_str,
-                        cholesterol,
-                        int(cvd_stroke),
-                        int(heart_attack),
-                        int(kidney_prob),
-                        fam_history,
-                        bp1,
-                        bp2,
-                        bp3,
-                        bp_avg,
-                        smoker,
-                        drinker,
-                        exercise,
-                        healthy_diet,
-                        risk_level,
-                        action,
-                    ),
-                )
-                conn.commit()
+            supabase_record = {
+                "assessment_date": str(assessment_date),
+                "assessor_name": assessor_name,
+                "last_name": last_name,
+                "first_name": first_name,
+                "middle_name": middle_name,
+                "zone": zone,
+                "barangay": target_barangay,
+                "contact_number": contact_number,
+                "birthday": str(dob),
+                "age": age,
+                "sex": sex,
+                "weight_kg": weight,
+                "height_cm": height,
+                "bmi": bmi,
+                "bmi_class": bmi_cat,
+                "waist_cm": waist,
+                "waist_risk": waist_risk,
+                "has_diabetes": has_diabetes,
+                "takes_diabetes_meds": takes_diabetes_meds,
+                "diabetes_meds": diabetes_meds_str,
+                "has_hypertension": has_htn,
+                "takes_htn_meds": takes_htn_meds,
+                "hypertension_meds": htn_meds_str,
+                "high_cholesterol": cholesterol,
+                "history_cvd_stroke": int(cvd_stroke),
+                "history_heart_attack": int(heart_attack),
+                "history_kidney": int(kidney_prob),
+                "family_history": fam_history,
+                "bp_1": bp1,
+                "bp_2": bp2,
+                "bp_3": bp3,
+                "bp_avg": bp_avg,
+                "is_smoker": smoker,
+                "is_binge_drinker": drinker,
+                "is_exercising": exercise,
+                "eats_healthy": healthy_diet,
+                "risk_level": risk_level,
+                "action_taken": action
+            }
 
-            backup_to_supabase()
+            save_assessment_to_supabase(supabase_record)
 
             # SEND SMS CONFIRMATION TO RESIDENT
             reg_sms_msg = f"Magandang araw {first_name}! Ikaw ay matagumpay na nairehistro sa PhilPEN Assessment Record ng Barangay {target_barangay}. CVD Risk Level: {risk_level}. Rekomendasyon: {recommended_action}."
