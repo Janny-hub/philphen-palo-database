@@ -38,22 +38,27 @@ def save_assessment_to_supabase(record):
 
 
 def load_assessments_from_supabase(barangay=None, admin=False):
-    """Loads live data directly from Supabase."""
-    supabase = get_supabase_client()
-    if not supabase:
+    """Loads live data directly from Supabase with error handling."""
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return pd.DataFrame()
+
+        query = supabase.table("assessments").select("*")
+
+        if not admin and barangay:
+            query = query.eq("barangay", barangay)
+
+        result = query.execute()
+
+        if not result.data:
+            return pd.DataFrame()
+
+        return pd.DataFrame(result.data)
+
+    except Exception as e:
+        st.error(f"Supabase loading error: {str(e)}")
         return pd.DataFrame()
-
-    query = supabase.table("assessments").select("*")
-
-    if not admin and barangay:
-        query = query.eq("barangay", barangay)
-
-    result = query.execute()
-
-    if not result.data:
-        return pd.DataFrame()
-
-    return pd.DataFrame(result.data)
 
 
 def delete_assessment_from_supabase(record_id):
