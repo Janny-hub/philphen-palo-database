@@ -1495,7 +1495,7 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
                 df["age"] = pd.to_numeric(df["age"], errors="coerce")
                 age_df = df.dropna(subset=["age"]).copy()
                 age_df["age_demo"] = pd.cut(age_df["age"], bins=bins, labels=labels, right=True)
-                age_demo_summary = df["age_demo"].value_counts().reset_index()
+                age_demo_summary = age_df["age_demo"].value_counts().reset_index()
                 age_demo_summary.columns = ["Demographic Category", "Count"]
                 age_demo_rows = [
                     [row["Demographic Category"], row["Count"], f"{round((row['Count']/total_count)*100, 1)}%"]
