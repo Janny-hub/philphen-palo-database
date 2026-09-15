@@ -43,6 +43,43 @@ def backup_to_supabase():
     except Exception as e:
         print("Supabase backup skipped:", e)
 
+
+
+def restore_from_supabase():
+    """Restore SQLite records from Supabase backup after server restart."""
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return
+
+        result = supabase.table("teki_storage").select("data_json").eq("id", 1).execute()
+        if not result.data:
+            return
+
+        data_json = result.data[0].get("data_json")
+        if not data_json:
+            return
+
+        rows = pd.read_json(data_json).to_dict(orient="records")
+
+        with get_db_connection() as conn:
+            existing = conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0]
+            if existing == 0 and rows:
+                columns = list(rows[0].keys())
+                placeholders = ",".join(["?"] * len(columns))
+                column_sql = ",".join(columns)
+
+                for row in rows:
+                    values = [row.get(c) for c in columns]
+                    conn.execute(
+                        f"INSERT INTO assessments ({column_sql}) VALUES ({placeholders})",
+                        values
+                    )
+                conn.commit()
+
+    except Exception as e:
+        print("Supabase restore skipped:", e)
+
 def get_db_connection():
     """Returns a robust SQLite database connection."""
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -138,6 +175,7 @@ def init_db():
         conn.commit()
 
 init_db()
+restore_from_supabase()
 
 # ---------------------------------------------------------
 # MUNICIPAL & BARANGAY CREDENTIALS
