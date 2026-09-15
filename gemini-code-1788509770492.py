@@ -813,8 +813,10 @@ if main_nav == " Executive Dashboard":
             st.markdown("#### **Demographics: Age Group & Sex Distribution**")
             bins = [0, 19, 30, 45, 64, 120]
             labels = ["<20", "20-29", "30-44", "45-64", "65+"]
-            df["age_group"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
-            age_sex_df = pd.crosstab(df["age_group"], df["sex"])
+            df["age"] = pd.to_numeric(df["age"], errors="coerce")
+            age_df = df.dropna(subset=["age"]).copy()
+            age_df["age_group"] = pd.cut(age_df["age"], bins=bins, labels=labels, right=True)
+            age_sex_df = pd.crosstab(age_df["age_group"], age_df["sex"])
             st.line_chart(age_sex_df)
 
         if is_admin:
@@ -1490,7 +1492,9 @@ elif main_nav == "   └ 📊 PhilPEN Database and Analytics":
 
                 bins = [0, 19, 59, 120]
                 labels = ["Youth (<20 y/o)", "Adults (20-59 y/o)", "Elderly (60+ y/o)"]
-                df["age_demo"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
+                df["age"] = pd.to_numeric(df["age"], errors="coerce")
+                age_df = df.dropna(subset=["age"]).copy()
+                age_df["age_demo"] = pd.cut(age_df["age"], bins=bins, labels=labels, right=True)
                 age_demo_summary = df["age_demo"].value_counts().reset_index()
                 age_demo_summary.columns = ["Demographic Category", "Count"]
                 age_demo_rows = [
