@@ -294,6 +294,26 @@ def calculate_average_bp(bp1, bp2, bp3):
     avg_dbp = round(sum(valid_dbps) / len(valid_dbps)) if valid_dbps else 80
     return f"{avg_sbp}/{avg_dbp}", avg_sbp
 
+def classify_who_hypertension(sbp, dbp=0):
+    """WHO/ISH hypertension classification based on BP level."""
+    if sbp >= 180 or dbp >= 110:
+        return "Grade 3 Hypertension"
+    elif sbp >= 160 or dbp >= 100:
+        return "Grade 2 Hypertension"
+    elif sbp >= 140 or dbp >= 90:
+        return "Grade 1 Hypertension"
+    elif sbp >= 130 or dbp >= 85:
+        return "High Normal BP"
+    else:
+        return "Normal BP"
+
+def auto_detect_hypertension(sbp, dbp=0):
+    """Automatically categorizes hypertension status from BP."""
+    category = classify_who_hypertension(sbp, dbp)
+    if category in ["Grade 1 Hypertension", "Grade 2 Hypertension", "Grade 3 Hypertension"]:
+        return "Meron", category
+    return "Wala", category
+
 def calculate_cvd_risk(age, sex, smoker, sbp, bmi, diabetes):
     if (diabetes == "Meron" and sbp >= 160) or (sbp >= 180) or (diabetes == "Meron" and age >= 60 and smoker == "Oo"):
         return "Very High", "≥30%", "#7f1d1d", "#ffffff", "Urgent referral to Physician/ Hospital"
@@ -943,8 +963,18 @@ elif main_nav in ["PhilPEN Program", "   └ 🩺 PhilPEN Assessment Form"]:
         bp3 = st.text_input("Pangatlong Blood Pressure (BP 3 - Optional)", key="p_bp3")
 
     bp_avg, sbp_for_calc = calculate_average_bp(bp1, bp2, bp3)
+    _, dbp_for_calc = parse_bp(bp_avg)
+
+    # WHO hypertension auto-classification from BP reading
+    auto_htn_status, htn_category = auto_detect_hypertension(sbp_for_calc, dbp_for_calc)
+    has_htn = auto_htn_status
+
     if bp1:
         st.success(f"**Average Computed BP:** {bp_avg}")
+        if auto_htn_status == "Meron":
+            st.error(f"🩺 WHO Hypertension Classification: {htn_category}")
+        else:
+            st.info(f"🩺 WHO Blood Pressure Classification: {htn_category}")
 
     st.markdown("**5. Lifestyle & Risk Stratification**")
     smoker = st.radio("Ikaw ba ay naninigarilyo?*", ["Hindi", "Oo"], key="p_smoke")
